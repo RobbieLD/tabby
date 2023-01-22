@@ -1,0 +1,94 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: system-ui, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+    background-image: url('img/bg.jpg');
+    background-size: cover;
+}
+
+.main {
+    display: grid;
+    grid-template-areas: 
+        "left content clock"
+        "left content right"
+        "footer footer footer";
+
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-rows: auto 1fr auto;
+
+    height: 100vh;
+}
+
+.clock {
+    grid-area: clock;
+    margin-right: 1em;
+    color: white;
+    display: grid;
+    justify-self: right;
+    
+}
+
+.time {
+    font-size: 6em;
+    font-weight: bold;
+    margin-bottom: -0.2em;
+}
+
+.icon {
+    max-width: 4em;
+    filter: grayscale(100%);
+    cursor: pointer;
+    transition: transform .2s;
+}
+
+.icon:hover {
+    filter: none;
+    transform: scale(1.5);
+}
+
+.date {
+    font-variant: small-caps;
+    text-align: justify;
+}
+
+.date:after {
+    content: "";
+    width: 100%;
+    display: inline-block;
+}
+
+.ordinal {
+    font-variant: super;
+}
+
+.left {
+    grid-area: left;
+}
+
+.right {
+    grid-area: right;
+}
+
+.content {
+    grid-area: content;
+    align-self: center;
+    display: grid;
+    grid-template-columns: auto auto auto auto;
+    gap: 1em;
+
+}
+
+.footer {
+    grid-area: footer;
+    background-color: rgba(227, 254, 255, 0.205);
+    padding: 0.5em;
+    display: grid;
+    grid-auto-flow: column;
+    font-size: 0.7em;
+}
+
+.settings-icon {
+    width: 1.5em;
+    cursor: pointer;
+    justify-self: end;
+}
