@@ -3,6 +3,14 @@ const setup = () => {
     setupTimer();
     refreshIcons();
     getBackground();
+    setGlobalFunctions();
+}
+
+const setGlobalFunctions = () => {
+    window.removeIcon = (title) => {
+        const icons = JSON.parse(localStorage.getItem('icons'));
+        localStorage.setItem('icons', JSON.stringify(icons.filter(i => i.title !== title)))
+    }
 }
 
 const getBackground = () => {
@@ -12,11 +20,11 @@ const getBackground = () => {
         alert('Unsplash key not set in Local Storage')
     }
 
-    fetch('https://api.unsplash.com/photos/random?orientation=landscape&topics=wallpapers&client_id=' + key)
+    fetch('https://api.unsplash.com/photos/random?orientation=landscape&query=arial-view&client_id=' + key)
         .then(response => response.json())
         .then(data => {
             const description = document.getElementsByClassName('image-credit')[0];
-            description.innerHTML = data.description;
+            description.innerHTML = data.description || data.alt_description;
             document.body.style.backgroundImage = "url('" + data.urls.full +"')";
         });
 }

@@ -1,0 +1,23 @@
+{
+    "manifest_version": 2,
+    "name": "Tabby",
+    "short_name": "Tabby",
+    "version": "1.1.0",
+    "description": "A simple new tab extensions",
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "rob@robdavis.dev",
+            "update_url": "https://github.com/RobbieLD/tabby/releases/download/latest/tabby.xpi"
+        }
+    },
+    "chrome_settings_overrides": {
+      "homepage": "index.html"
+    },
+    "chrome_url_overrides": {
+      "newtab": "index.html"
+    },
+    "icons": {
+      "48": "img/settings.png"
+    },
+    "permissions": ["storage"]
+}
