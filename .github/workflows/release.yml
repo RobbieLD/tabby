@@ -1,9 +1,8 @@
-name: "Build"
+name: "Release"
 on:
   push:
-    branches:
-      - master
-  pull_request:
+    tags:
+      - '*.*.*'
 
 jobs:
   build:
@@ -27,3 +26,10 @@ jobs:
         with:
           name: tabby.xpi
           path: ${{ steps.web-ext-build.outputs.target }}
+
+      - name: "Create Release"
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: ${{ steps.web-ext-build.outputs.target }}
