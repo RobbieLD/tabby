@@ -6,30 +6,39 @@
     <title>Tabby</title>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
     <link rel='stylesheet' type='text/css' media='screen' href='app.css'>
-    <script src='app.js'></script>
 </head>
 <body>
     <div class="main">
         <div class="clock">
-            <div class="time">21:20</div>
-            <div class="date">Sunday 20<span class="ordinal">th</span> of January 2023</div>
+            <div class="time"></div>
+            <div class="date"></div>
         </div>
         <div class="left"></div>
-        <div class="content">
-            <img class="icon" title="WhatsApp" src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/512px-WhatsApp.svg.png">
-            <img class="icon" src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/512px-WhatsApp.svg.png">
-            <img class="icon" src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/512px-WhatsApp.svg.png">
-            <img class="icon" src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/512px-WhatsApp.svg.png">
-            <img class="icon" src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/512px-WhatsApp.svg.png">
-            <img class="icon" src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/512px-WhatsApp.svg.png">
-            <img class="icon" src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/512px-WhatsApp.svg.png">
-            <img class="icon" src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/512px-WhatsApp.svg.png">
-        </div>
+        <div class="content"></div>
         <div class="right"></div>
         <div class="footer">
-            <div class="image-credit">Some image by some guy somewhere</div>
+            <div class="image-credit"></div>
             <img src="img/settings.png" class="settings-icon">
         </div>
     </div>
+    <div class="settings-modal">
+        <div class="settings-title">
+            Add New Icon
+        </div>
+        <div>
+            <input type="text" placeholder="URL" class="settings-input settings-input__url">
+        </div>
+        <div>
+            <input type="text" placeholder="Title" class="settings-input settings-input__title">
+        </div>
+        <div>
+            <input type="file" placeholder="Icon File" class="settings-input settings-input__icon">
+        </div>
+        <div class="settings-controls">
+            <input type="button" value="Save" class="settings-button settings-button__save">
+            <input type="button" value="Cancel" class="settings-button settings-button__cancel">
+        </div>
+    </div>
+    <script src='app.js'></script>
 </body>
 </html>
