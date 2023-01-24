@@ -1,12 +1,12 @@
 {
     "addons": {
-      "{rob@robdavis.dev}": {
+      "rob@robdavis.dev": {
         "updates": [
           {
-            "version": "1.1.8",
+            "version": "1.1.9",
             "update_link": "https://github.com/RobbieLD/tabby/releases/latest/download/tabby.xpi"
           }
         ]
       }
     }
-  }
+}
