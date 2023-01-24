@@ -34,4 +34,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: ${{ steps.web-ext-build.outputs.target }}
+          files: |
+            tabby.xpi
+            update.json
