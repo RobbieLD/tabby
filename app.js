@@ -105,6 +105,7 @@ const refreshIcons = () => {
 
         const linkElement = document.createElement('a');
         linkElement.href = icon.url;
+        linkElement.target = "_blank";
         linkElement.title = icon.title;
 
         linkElement.appendChild(iconElement);
