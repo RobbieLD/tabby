@@ -71,6 +71,7 @@ body {
     padding-left: 1em;
     padding-right: 1em;
     padding-top: 0.5em;
+    backdrop-filter: blur(20px);
     grid-template-columns: repeat(auto-fill, minmax(2em, 1fr));
 }
 
