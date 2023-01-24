@@ -14,13 +14,14 @@ const setGlobalFunctions = () => {
 }
 
 const getBackground = () => {
-    const key = localStorage.getItem('unsplash');
+    let key = localStorage.getItem('unsplash');
 
     if (!key) {
-        alert('Unsplash key not set in Local Storage')
+        key = prompt("Please enter your unsplash api key");
+        localStorage.setItem('unsplash', key);
     }
 
-    fetch('https://api.unsplash.com/photos/random?orientation=landscape&query=arial-view&client_id=' + key)
+    fetch('https://api.unsplash.com/photos/random?orientation=landscape&query=nature&client_id=' + key)
         .then(response => response.json())
         .then(data => {
             const description = document.getElementsByClassName('image-credit')[0];

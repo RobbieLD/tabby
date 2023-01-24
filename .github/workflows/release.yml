@@ -32,7 +32,7 @@ jobs:
           cmd: build
           source: .
           filename: "tabby.xpi"
-          ignoreFiles: '[ ".github/release.yml",".gitignore" ]'
+          ignoreFiles: '[ ".github/release.yml",".gitignore", "docs/*" ]'
 
       - name: "Create Release"
         uses: softprops/action-gh-release@v1
