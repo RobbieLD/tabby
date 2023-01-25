@@ -14,13 +14,32 @@ const getBackground = () => {
         localStorage.setItem('unsplash', key);
     }
 
-    fetch('https://api.unsplash.com/photos/random?orientation=landscape&query=nature&client_id=' + key)
-        .then(response => response.json())
-        .then(data => {
-            const description = document.getElementsByClassName('image-credit')[0];
-            description.innerHTML = data.description || data.alt_description;
-            document.body.style.backgroundImage = "url('" + data.urls.full +"')";
-        });
+    const url = localStorage.getItem('url');
+    const hour = localStorage.getItem('hour');
+    const description = localStorage.getItem('description');
+
+    if (!url || !hour || new Date().getHours() != hour) {
+        fetch('https://api.unsplash.com/photos/random?orientation=landscape&query=nature&client_id=' + key)
+            .then(response => response.json())
+            .then(data => {
+                const credit = document.getElementsByClassName('image-credit')[0];
+                credit.innerHTML = data.description || data.alt_description;
+                document.body.style.backgroundImage = "url('" + data.urls.full +"')";
+                localStorage.setItem('url', data.urls.full);
+                localStorage.setItem('hour', new Date().getHours());
+                localStorage.setItem('description', data.description || data.alt_description);
+            }).catch(error => {
+                console.error(error);
+                // Fall back and attempt to just use the cached one
+                const credit = document.getElementsByClassName('image-credit')[0];
+                credit.innerHTML = description;
+                document.body.style.backgroundImage = "url('" + url +"')";
+            });
+    } else {
+        const credit = document.getElementsByClassName('image-credit')[0];
+        credit.innerHTML = description;
+        document.body.style.backgroundImage = "url('" + url +"')";
+    }
 }
 
 const setupTimer = () => {
