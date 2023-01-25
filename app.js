@@ -2,11 +2,11 @@ const setup = () => {
     setupSettings();
     setupTimer();
     refreshIcons();
-    getBackground();
+    getBackground(false);
     buildIconSelector();
 }
 
-const getBackground = () => {
+const getBackground = (refresh) => {
     let key = localStorage.getItem('unsplash');
 
     if (!key) {
@@ -18,7 +18,7 @@ const getBackground = () => {
     const hour = localStorage.getItem('hour');
     const description = localStorage.getItem('description');
 
-    if (!url || !hour || new Date().getHours() != hour) {
+    if (!url || !hour || new Date().getHours() != hour || refresh) {
         fetch('https://api.unsplash.com/photos/random?orientation=landscape&query=nature&client_id=' + key)
             .then(response => response.json())
             .then(data => {
@@ -62,6 +62,10 @@ const tick = () => {
         ordinal(now.getDate()) + '</span> of ' +
         convertMonth(now.getMonth()) + ' ' +
         now.getFullYear();
+
+    const refreshButton = document.getElementsByClassName('settings-button__refresh')[0];
+
+    refreshButton.addEventListener('click', () => getBackground(true))
 }
 
 const setupSettings = () => {
