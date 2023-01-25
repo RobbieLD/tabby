@@ -3,14 +3,7 @@ const setup = () => {
     setupTimer();
     refreshIcons();
     getBackground();
-    setGlobalFunctions();
-}
-
-const setGlobalFunctions = () => {
-    window.removeIcon = (title) => {
-        const icons = JSON.parse(localStorage.getItem('icons'));
-        localStorage.setItem('icons', JSON.stringify(icons.filter(i => i.title !== title)))
-    }
+    buildIconSelector();
 }
 
 const getBackground = () => {
@@ -66,6 +59,33 @@ const setupSettings = () => {
     settingsButtonCancel.addEventListener('click', () => toggleSettings(false));
 }
 
+const buildIconSelector = () => {
+    const icons = JSON.parse(localStorage.getItem('icons'));
+
+    if (!icons) {
+        return;
+    }
+
+    const options = document.getElementsByClassName('settings-icons-selector')[0];
+    options.innerHTML = '';
+
+    for (const icon of icons) {
+        const option = document.createElement('option');
+        option.value = icon.title;
+        option.textContent = icon.title;
+        options.appendChild(option);
+    }
+
+    const removeButton = document.getElementsByClassName('settings-button__remove')[0];
+    removeButton.addEventListener('click', removeIcon);
+}
+
+const removeIcon = () => {
+    const selector = document.getElementsByClassName('settings-icons-selector')[0];
+    const icons = JSON.parse(localStorage.getItem('icons'));
+    localStorage.setItem('icons', JSON.stringify(icons.filter(i => i.title !== selector.value)))
+}
+
 const addNewIcon = () => {
     const url = document.getElementsByClassName('settings-input__url')[0].value;
     const fileElement = document.getElementsByClassName('settings-input__icon')[0];
@@ -77,7 +97,8 @@ const addNewIcon = () => {
         icons.push({ url, icon, title });
         localStorage.setItem('icons', JSON.stringify(icons));
         refreshIcons();
-    })
+        buildIconSelector();
+    });
 }
 
 const encodeImage = (file, callback) => {
@@ -118,7 +139,7 @@ const toggleSettings = (show) => {
     const panel = document.getElementsByClassName('settings-modal')[0]
 
     if (show) {
-        panel.style.display = 'block';
+        panel.style.display = 'grid';
     }
     else {
         panel.style.display = 'none';

@@ -22,6 +22,7 @@
     <div class="settings-modal">
         <div class="settings-title">
             Add New Icon
+            <span class="setting-cancel settings-button__cancel">x</span>
         </div>
         <div>
             <input type="text" placeholder="URL" class="settings-input settings-input__url">
@@ -34,7 +35,15 @@
         </div>
         <div class="settings-controls">
             <input type="button" value="Save" class="settings-button settings-button__save">
-            <input type="button" value="Cancel" class="settings-button settings-button__cancel">
+        </div>
+        <div class="settings-title">
+            Remove Icon
+        </div>
+        <div>
+            <select class="settings-icons-selector"></select>
+        </div>
+        <div class="settings-controls">
+            <input type="button" value="Remove" class="settings-button settings-button__remove">
         </div>
     </div>
     <script src='app.js'></script>

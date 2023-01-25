@@ -96,11 +96,15 @@ body {
     border-left: solid 2px black;
     padding: 1em;
     display: none;
+    grid-auto-flow: row;
+    grid-template-rows: repeat(auto-fill, minmax(0, max-content));
 }
 
 .settings-title {
     font-size: 1.5em;
     margin-bottom: 1em;
+    display: grid;
+    grid-auto-flow: column;
 }
 
 .settings-button {
@@ -123,5 +127,15 @@ body {
     width: 1.5em;
     cursor: pointer;
     margin-right: 0.5em;
+    justify-self: end;
+}
+
+.settings-icons-selector {
+    width: 100%;
+    margin-bottom: 0.5em;
+}
+
+.setting-cancel {
+    cursor: pointer;
     justify-self: end;
 }
