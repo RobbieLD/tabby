@@ -25,14 +25,19 @@ jobs:
           regex: false
           include: '*.json'
 
+      - name: Install all dependencies
+        run: npm install
+      
+      - name: Build
+        run: npm run build
+
       - name: "Extension Build"
         id: web-ext-build
         uses: kewisch/action-web-ext@v1
         with:
           cmd: build
-          source: .
+          source: build
           filename: "tabby.xpi"
-          ignoreFiles: '[ ".github/release.yml",".gitignore", "docs/*" ]'
 
       - name: "Create Release"
         uses: softprops/action-gh-release@v1
