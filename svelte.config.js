@@ -8,7 +8,13 @@ const config = {
 	preprocess: vitePreprocess(),
 
 	kit: {
-		adapter: adapter()
+		adapter: adapter(),
+        csp: {
+
+            mode: "hash",
+            directives: { "script-src": ["self"] }
+     
+        }
 	}
 };
 
