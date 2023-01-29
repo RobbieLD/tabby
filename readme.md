@@ -8,6 +8,7 @@ This is just another FireFox new tab extension because I couldn't find one that 
 - Add and remove icons for apps.
 - Backgrounds urls are cached for an hour to avoid excess api usage.
 - Settings menu allows you to manually refresh the background when ever you like.
+- TODO: Import and Export feature
 
 ## Installation
 This extension can be installed directly in firefox (and will have auto updates) from the release page on this repo. However it's not signed (as yet) from Mozilla so it can only be installed in the [Developer Release](https://www.mozilla.org/en-US/firefox/developer/) or other experimental releases once you've disabled the signing check by going to `about:config`, change `xpinstall.signatures.required` to `false`.
