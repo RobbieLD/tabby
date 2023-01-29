@@ -33,8 +33,8 @@ jobs:
         
       - name: Copy Extra files
         run: |
-          mv manifest.json build/manifest.json
-          mv update.json build/update.json
+          copy manifest.json build/manifest.json
+          copy update.json build/update.json
 
       - name: "Extension Build"
         id: web-ext-build
