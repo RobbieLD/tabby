@@ -2,7 +2,7 @@ name: "Release"
 on:
   push:
     tags:
-      - '*.*.*'
+      - "*.*.*"
 
 jobs:
   build:
@@ -23,25 +23,25 @@ jobs:
           find: "__VERSION__"
           replace: "${{ env.RELEASE_VERSION }}"
           regex: false
-          include: '*.json'
+          include: "*.json"
 
       - name: Install all dependencies
         run: npm install
-      
+
       - name: Build
         run: npm run build
-        
+
       - name: Copy Extra files
         run: |
-          cp ./manifest.json ./build
-          cp ./update.json ./build
+          cp ./manifest.json ./public
+          cp ./update.json ./public
 
       - name: "Extension Build"
         id: web-ext-build
         uses: kewisch/action-web-ext@v1
         with:
           cmd: build
-          source: build
+          source: public
           filename: "tabby.xpi"
 
       - name: "Create Release"
