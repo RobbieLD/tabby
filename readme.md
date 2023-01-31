@@ -1,6 +1,7 @@
 # Tabby
 This is just another FireFox new tab extension because I couldn't find one that I wanted already available.
 ![Screen Shot](docs/screen-shot.png)
+![Screen Shot Menu](docs/screen-shot_menu.png)
 
 ## Features 
 - Stores all icons locally in local storage (so use smallish ones) so it cuts down on network requests for every new tab.

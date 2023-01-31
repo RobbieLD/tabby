@@ -5,7 +5,6 @@
     const saveIcon = () => icons.add(newIconTitle, newIconUrl, files);
     const removeIcon = () => icons.remove(removeIconTitle);
 
-    // TODO: Use svelte motion to animate this
     let showSettingsPanel = false;
     let removeIconTitle = "";
     let newIconTitle = "";
@@ -25,9 +24,7 @@
 </div>
 
 <div
-    class="{showSettingsPanel
-        ? 'settings-modal--open'
-        : 'settings-modal--closed'} settings-modal"
+    class="{!showSettingsPanel ? 'settings-modal--closed' : ''} settings-modal"
 >
     <div class="settings-close">
         <img
@@ -44,7 +41,6 @@
             type="text"
             bind:value={newIconUrl}
             placeholder="URL"
-            class="settings-input"
         />
     </div>
     <div>
@@ -52,7 +48,6 @@
             type="text"
             bind:value={newIconTitle}
             placeholder="Title"
-            class="settings-input"
         />
     </div>
     <div>
@@ -61,42 +56,42 @@
             bind:files
             accept="image/png, image/jpeg"
             placeholder="Icon File"
-            class="settings-input"
         />
     </div>
-    <div class="settings-controls">
+    <div>
         <input
             type="button"
             on:click={saveIcon}
             value="Save"
-            class="settings-button"
         />
     </div>
+    <div class="setting-divider"></div>
     <div class="settings-title">Remove Icon</div>
     <div>
         <select bind:value={removeIconTitle} class="settings-icons-selector">
+            <option value="" disabled selected>Select Icon</option>
             {#each $icons as icon}
                 <option>{icon.title}</option>
             {/each}
         </select>
     </div>
-    <div class="settings-controls">
+    <div>
         <input
             type="button"
             value="Remove"
             on:click={removeIcon}
-            class="settings-button"
         />
     </div>
+    <div class="setting-divider"></div>
     <div class="settings-title">Refresh Background</div>
-    <div class="settings-controls">
+    <div>
         <input
             type="button"
             value="Refresh"
             on:click={background.refresh}
-            class="settings-button"
         />
     </div>
+    <div class="setting-divider"></div>
 </div>
 
 <style>
@@ -124,40 +119,26 @@
         top: 0;
         right: 0;
         height: 100%;
-        background: white;
-        border-left: solid 2px black;
+        background: #ffffff63;
+        backdrop-filter: blur(20px);
         padding: 1em;
-        display: none;
+        transition: 0.5s ease-in-out;
+        box-shadow: #00000021 -10px 0px 5px;
     }
 
     .settings-modal--closed {
-        display: none;
-    }
-
-    .settings-modal--open {
-        display: initial;
+        transform: translate(100%);
     }
 
     .settings-title {
-        font-size: 1.5em;
+        font-size: 1.2em;
         margin-bottom: 1em;
         margin-top: 1em;
     }
 
-    .settings-button {
-        width: 5em;
-        margin-left: 0.5em;
-    }
-
-    .settings-controls {
-        justify-content: right;
-        display: grid;
-        grid-auto-flow: column;
-    }
-
-    .settings-input {
-        width: 20em;
-        margin-bottom: 1em;
+    .setting-divider {
+        border-top: solid black 1px;
+        margin-top: 1em;
     }
 
     .settings-cancel {
@@ -168,5 +149,25 @@
     .settings-close {
         display: flex;
         justify-content: end;
+    }
+
+    input, select {
+        border: none;
+        padding: 0.5em;
+        background-color: #ffffff70;
+        width: 100%;
+        margin-bottom: 1em;
+    }
+
+    input:hover {
+        background-color: white;
+    }
+
+    input[type="file"]::file-selector-button {
+        display: none;
+    }
+
+    input:focus {
+        outline: none !important;
     }
 </style>
