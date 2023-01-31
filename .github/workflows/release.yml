@@ -26,10 +26,10 @@ jobs:
           include: "*.json"
 
       - name: Install all dependencies
-        run: npm install
+        run: yarn install
 
       - name: Build
-        run: npm run build
+        run: yarn run build
 
       - name: Copy Extra files
         run: |
