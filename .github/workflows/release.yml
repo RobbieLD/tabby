@@ -23,7 +23,7 @@ jobs:
           find: "__VERSION__"
           replace: "${{ env.RELEASE_VERSION }}"
           regex: false
-          include: "update.json"
+          include: "*.json"
 
       - name: Set Version In UI
         uses: jacobtomlinson/gha-find-replace@v2
