@@ -46,6 +46,7 @@
         grid-template-rows: auto 1fr auto;
 
         height: 100vh;
+        background-size: cover;
     }
 
     .icon {
