@@ -23,7 +23,7 @@ jobs:
           find: "__VERSION__"
           replace: "${{ env.RELEASE_VERSION }}"
           regex: false
-          include: "*.json"
+          include: "update.json,src/components/Settings.svelte"
 
       - name: Install all dependencies
         run: yarn install

@@ -27,6 +27,7 @@
     class="{!showSettingsPanel ? 'settings-modal--closed' : ''} settings-modal"
 >
     <div class="settings-close">
+        <span class="version">Version __VERSION__</span>
         <img
             src="images/close.png"
             class="settings-cancel"
@@ -62,10 +63,10 @@
         <input
             type="button"
             on:click={saveIcon}
-            value="Save"
+            value="Add"
         />
     </div>
-    <div class="setting-divider"></div>
+    <div class="settings-divider"></div>
     <div class="settings-title">Remove Icon</div>
     <div>
         <select bind:value={removeIconTitle} class="settings-icons-selector">
@@ -82,7 +83,7 @@
             on:click={removeIcon}
         />
     </div>
-    <div class="setting-divider"></div>
+    <div class="settings-divider"></div>
     <div class="settings-title">Refresh Background</div>
     <div>
         <input
@@ -91,10 +92,33 @@
             on:click={background.refresh}
         />
     </div>
-    <div class="setting-divider"></div>
+    <div class="settings-divider"></div>
+    <div class="settings-title">Export Icons</div>
+    <div>
+        <input
+            type="button"
+            value="Export"
+            on:click={icons.export}
+        />
+    </div>
+    <div class="settings-divider"></div>
+    <div class="settings-title">Import Import</div>
+    <div>
+        <input
+            type="file"
+            accept="application/json"
+            placeholder="Config File"
+            on:change={icons.import}
+        />
+    </div>
 </div>
 
 <style>
+
+    .version {
+        font-size: 0.7em;
+    }
+
     .info {
         grid-area: info;
         color: white;
@@ -136,7 +160,7 @@
         margin-top: 1em;
     }
 
-    .setting-divider {
+    .settings-divider {
         border-top: solid black 1px;
         margin-top: 1em;
     }
@@ -144,11 +168,12 @@
     .settings-cancel {
         width: 1em;
         cursor: pointer;
+        justify-self: end;
     }
 
     .settings-close {
-        display: flex;
-        justify-content: end;
+        display: grid;
+        grid-auto-flow: column;
     }
 
     input, select {

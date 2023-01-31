@@ -1,11 +1,11 @@
 import { writable } from 'svelte/store';
 import type Icon from '../models/icon';
-import { encodeImage } from '../utils/encoders';
+import { encodeImage, parseIcons } from '../utils/encoders';
 
 const readIcons = () => {
     const loadedIcons = JSON.parse(window.localStorage.getItem('icons') || '[]');
 
-    const { subscribe, update } = writable<Icon[]>(loadedIcons);
+    const { subscribe, update, set } = writable<Icon[]>(loadedIcons);
 
     return {
         subscribe,
@@ -25,6 +25,26 @@ const readIcons = () => {
                     return items;
                 });
 
+            });
+        },
+        export: () => {
+            const raw = window.localStorage.getItem('icons');
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(raw));
+            element.setAttribute('download', 'tabby.json');
+
+            element.style.display = 'none';
+            document.body.appendChild(element);
+
+            element.click();
+
+            document.body.removeChild(element);
+        },
+        import: (event) => {
+            parseIcons(event.target.files, (data) => {
+                const inputIcons = JSON.parse(data.toString());
+                window.localStorage.setItem('icons', inputIcons);
+                set(inputIcons);
             });
         }
     }

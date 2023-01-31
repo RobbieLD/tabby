@@ -17,7 +17,7 @@
       "newtab": "index.html"
     },
     "icons": {
-      "48": "img/settings.png"
+      "48": "public/images/settings.png"
     },
     "permissions": ["storage"]
 }
