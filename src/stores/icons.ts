@@ -42,8 +42,8 @@ const readIcons = () => {
         },
         import: (event) => {
             parseIcons(event.target.files, (data) => {
+                window.localStorage.setItem('icons', data.toString());
                 const inputIcons = JSON.parse(data.toString());
-                window.localStorage.setItem('icons', inputIcons);
                 set(inputIcons);
             });
         }
