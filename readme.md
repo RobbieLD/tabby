@@ -11,7 +11,14 @@ This is just another FireFox new tab extension because I couldn't find one that 
 - TODO: Import and Export feature
 
 ## Installation
-This extension can be installed directly in firefox (and will have auto updates) from the release page on this repo. However it's not signed (as yet) from Mozilla so it can only be installed in the [Developer Release](https://www.mozilla.org/en-US/firefox/developer/) or other experimental releases once you've disabled the signing check by going to `about:config`, change `xpinstall.signatures.required` to `false`.
+There are two release channels you can install this extension from which are described below.
 
+### Develop
+This extension can be installed directly in firefox (and will have auto updates) from the release page in this repo by downloading [tabby.xpi](https://github.com/RobbieLD/tabby/releases/latest/download/tabby.xpi). However it's not signed (as yet) from Mozilla so it can only be installed in the [Developer Release](https://www.mozilla.org/en-US/firefox/developer/) or other experimental releases once you've disabled the signing check by going to `about:config`, change `xpinstall.signatures.required` to `false`.
+
+### Stable
+Coming soon ...
+
+## Usage
 To use the extension you'll need a free unsplash api key which can be obtained from the [Unsplash Dev Portal](https://unsplash.com/developers). You will be prompted for this when you first open the extension.
 
