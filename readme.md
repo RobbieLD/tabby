@@ -9,7 +9,7 @@ This is just another FireFox new tab extension because I couldn't find one that 
 - Add and remove icons for apps.
 - Backgrounds urls are cached for an hour to avoid excess api usage.
 - Settings menu allows you to manually refresh the background when ever you like.
-- TODO: Import and Export feature
+- Import and export icon lists.
 
 ## Installation
 There are two release channels you can install this extension from which are described below.
@@ -22,4 +22,7 @@ Coming soon ...
 
 ## Usage
 To use the extension you'll need a free unsplash api key which can be obtained from the [Unsplash Dev Portal](https://unsplash.com/developers). You will be prompted for this when you first open the extension.
+
+## Contributing
+Contributions in the form of PRs are welcome. This started as little project for me to make something I wanted but since I've gone to all that work I figured I'd put it on the Mozilla and Chrome add-on hubs so other's could use it too. There's a lot of features around customisation which could be added but I haven't bothered with at the moment since it's how I want it, but i'll probably get to some of them in the future. 
 
