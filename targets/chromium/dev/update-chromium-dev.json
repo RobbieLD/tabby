@@ -1,0 +1,12 @@
+{
+    "addons": {
+      "rob@robdavis.dev": {
+        "updates": [
+          {
+            "version": "__VERSION__",
+            "update_link": "https://github.com/RobbieLD/tabby/releases/latest/download/tabby-chromium-dev.xpi"
+          }
+        ]
+      }
+    }
+}
