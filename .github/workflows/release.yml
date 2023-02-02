@@ -16,6 +16,12 @@ jobs:
         build:
           - release
           - dev
+        include:
+          - browser: firefox
+            extension: xpi
+          - browser: chromium
+            extension: crx
+
     permissions:
       contents: write
     steps:
@@ -51,14 +57,11 @@ jobs:
         run: |
           cp ./targets/${{ matrix.browser }}/${{ matrix.build }}/manifest.json ./public
 
-      - name: "Extension Build"
-        if: matrix.browser == 'firefox'
+      - uses: montudor/action-zip@v1
+        name: "Pack Extension"
         id: web-ext-build
-        uses: kewisch/action-web-ext@v1
         with:
-          cmd: build
-          source: public
-          filename: "tabby-${{ matrix.browser }}-${{ matrix.build }}.xpi"
+          args: zip -qq -r tabby-${{ matrix.browser }}-${{ matrix.build }}.${{ matrix.extension }} dir
 
       - name: "Create Release"
         uses: softprops/action-gh-release@v1
@@ -66,5 +69,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
-            ${{ steps.web-ext-build.outputs.target }}
+            tabby-${{ matrix.browser }}-${{ matrix.build }}.${{ matrix.extension }}
             targets/${{ matrix.browser }}/${{ matrix.build }}/update-${{ matrix.browser }}-${{ matrix.build }}.json
