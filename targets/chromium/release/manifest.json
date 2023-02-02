@@ -1,0 +1,14 @@
+{
+    "manifest_version": 3,
+    "name": "Tabby",
+    "short_name": "Tabby",
+    "version": "__VERSION__",
+    "description": "A simple new tab extensions",
+    "chrome_url_overrides": {
+      "newtab": "index.html"
+    },
+    "icons": {
+      "48": "images/favicon.png"
+    },
+    "permissions": ["storage"]
+}

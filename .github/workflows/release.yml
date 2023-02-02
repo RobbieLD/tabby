@@ -12,6 +12,7 @@ jobs:
       matrix:
         browser:
           - firefox
+          - chromium
         build:
           - release
           - dev
