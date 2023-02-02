@@ -4,7 +4,7 @@
         "updates": [
           {
             "version": "__VERSION__",
-            "update_link": "https://github.com/RobbieLD/tabby/releases/latest/download/tabby.xpi"
+            "update_link": "https://github.com/RobbieLD/tabby/releases/latest/download/tabby-firefox-dev.xpi"
           }
         ]
       }

@@ -8,6 +8,13 @@ jobs:
   build:
     name: "Build"
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        browser:
+          - firefox
+        build:
+          - release
+          - dev
     permissions:
       contents: write
     steps:
@@ -23,7 +30,7 @@ jobs:
           find: "__VERSION__"
           replace: "${{ env.RELEASE_VERSION }}"
           regex: false
-          include: "*.json"
+          include: "targets/${{ matrix.browser }}/${{ matrix.build }}/*.json"
 
       - name: Set Version In UI
         uses: jacobtomlinson/gha-find-replace@v2
@@ -39,18 +46,23 @@ jobs:
       - name: Build
         run: yarn run build
 
-      - name: Copy Extra files
+      - name: Copy Manifest
         run: |
-          cp ./manifest.json ./public
-          cp ./update.json ./public
+          cp ./targets/${{ matrix.browser }}/${{ matrix.build }}/manifest.json ./public
+
+      - name: Copy Update json
+        if: matrix.build == 'dev'
+        run: |
+          cp ./targets/${{ matrix.browser }}/${{ matrix.build }}/update-${{ matrix.browser }}-${{ matrix.build }}.json ./public
 
       - name: "Extension Build"
+        if: matrix.browser == 'firefox'
         id: web-ext-build
         uses: kewisch/action-web-ext@v1
         with:
           cmd: build
           source: public
-          filename: "tabby.xpi"
+          filename: "tabby-${{ matrix.browser }}-${{ matrix.build }}.xpi"
 
       - name: "Create Release"
         uses: softprops/action-gh-release@v1
@@ -59,4 +71,4 @@ jobs:
         with:
           files: |
             ${{ steps.web-ext-build.outputs.target }}
-            update.json
+            update-${{ matrix.browser }}-${{ matrix.build }}.json

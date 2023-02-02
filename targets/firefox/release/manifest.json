@@ -4,12 +4,6 @@
     "short_name": "Tabby",
     "version": "__VERSION__",
     "description": "A simple new tab extensions",
-    "browser_specific_settings": {
-        "gecko": {
-            "id": "rob@robdavis.dev",
-            "update_url": "https://github.com/RobbieLD/tabby/releases/latest/download/update.json"
-        }
-    },
     "chrome_settings_overrides": {
       "homepage": "index.html"
     },
