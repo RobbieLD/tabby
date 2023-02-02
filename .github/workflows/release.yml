@@ -61,7 +61,7 @@ jobs:
         name: "Pack Extension"
         id: web-ext-build
         with:
-          args: zip -qq -r tabby-${{ matrix.browser }}-${{ matrix.build }}.${{ matrix.extension }} public
+          args: zip -qq -r tabby-${{ matrix.browser }}-${{ matrix.build }}.${{ matrix.extension }} public/*
 
       - name: "Create Release"
         uses: softprops/action-gh-release@v1
