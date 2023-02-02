@@ -57,6 +57,13 @@ jobs:
         run: |
           cp ./targets/${{ matrix.browser }}/${{ matrix.build }}/manifest.json ./public
 
+      - name: Pack Extension
+        uses: thedoctor0/zip-release@0.7.1
+        with:
+          type: 'zip'
+          filename: tabby-${{ matrix.browser }}-${{ matrix.build }}.${{ matrix.extension }}
+          path: public
+
       - uses: montudor/action-zip@v1
         name: "Pack Extension"
         id: web-ext-build
