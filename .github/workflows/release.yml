@@ -62,7 +62,7 @@ jobs:
         with:
           type: 'zip'
           filename: tabby-${{ matrix.browser }}-${{ matrix.build }}.${{ matrix.extension }}
-          path: public
+          directory: public
 
       - uses: montudor/action-zip@v1
         name: "Pack Extension"
@@ -76,5 +76,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
-            tabby-${{ matrix.browser }}-${{ matrix.build }}.${{ matrix.extension }}
+            public/tabby-${{ matrix.browser }}-${{ matrix.build }}.${{ matrix.extension }}
             targets/${{ matrix.browser }}/${{ matrix.build }}/update-${{ matrix.browser }}-${{ matrix.build }}.json
