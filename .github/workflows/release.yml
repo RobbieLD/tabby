@@ -71,4 +71,4 @@ jobs:
         with:
           files: |
             ${{ steps.web-ext-build.outputs.target }}
-            update-${{ matrix.browser }}-${{ matrix.build }}.json
+            targets/${{ matrix.browser }}/${{ matrix.build }}/update-${{ matrix.browser }}-${{ matrix.build }}.json
