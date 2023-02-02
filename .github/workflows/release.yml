@@ -50,11 +50,6 @@ jobs:
         run: |
           cp ./targets/${{ matrix.browser }}/${{ matrix.build }}/manifest.json ./public
 
-      - name: Copy Update json
-        if: matrix.build == 'dev'
-        run: |
-          cp ./targets/${{ matrix.browser }}/${{ matrix.build }}/update-${{ matrix.browser }}-${{ matrix.build }}.json ./public
-
       - name: "Extension Build"
         if: matrix.browser == 'firefox'
         id: web-ext-build
