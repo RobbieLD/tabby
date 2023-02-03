@@ -57,12 +57,21 @@ jobs:
         run: |
           cp ./targets/${{ matrix.browser }}/${{ matrix.build }}/manifest.json ./public
 
-      - name: Pack Extension
-        uses: thedoctor0/zip-release@0.7.1
+      - name: Pack XPI
+        if: matrix.browser == 'firefox'
+        uses: kewisch/action-web-ext@v1
         with:
-          type: 'zip'
+          cmd: build
+          source: public
           filename: tabby-${{ matrix.browser }}-${{ matrix.build }}.${{ matrix.extension }}
-          directory: public
+
+      - name: Install CRX Builder
+        if: matrix.browser == 'chromium'
+        run: yarn add crx -g
+
+      - name: Build CRX
+        if: matrix.browser == 'chromium'
+        run: crx pack public -o tabby-${{ matrix.browser }}-${{ matrix.build }}.${{ matrix.extension }}
 
       - uses: montudor/action-zip@v1
         name: "Pack Extension"
@@ -76,5 +85,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
-            public/tabby-${{ matrix.browser }}-${{ matrix.build }}.${{ matrix.extension }}
+            tabby-${{ matrix.browser }}-${{ matrix.build }}.${{ matrix.extension }}
             targets/${{ matrix.browser }}/${{ matrix.build }}/update-${{ matrix.browser }}-${{ matrix.build }}.json
