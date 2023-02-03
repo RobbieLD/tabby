@@ -15,10 +15,12 @@ This is just another FireFox new tab extension because I couldn't find one that 
 There are two release channels you can install this extension from which are described below.
 
 ### Develop
-This extension can be installed directly in firefox (and will have auto updates) from the release page in this repo by downloading [tabby-firefox-dev.xpi](https://github.com/RobbieLD/tabby/releases/latest/download/tabby-firfox-dev.xpi). However as this is the dev release it's not signed by Mozilla so it can only be installed in the [Developer Release](https://www.mozilla.org/en-US/firefox/developer/) or other experimental releases once you've disabled the signing check by going to `about:config`, change `xpinstall.signatures.required` to `false`.
+__FireFox__: This extension can be installed directly in firefox (and will have auto updates) from the release page in this repo by downloading [tabby-firefox-dev.xpi](https://github.com/RobbieLD/tabby/releases/latest/download/tabby-firfox-dev.xpi). However as this is the dev release it's not signed by Mozilla so it can only be installed in the [Developer Release](https://www.mozilla.org/en-US/firefox/developer/) or other experimental releases once you've disabled the signing check by going to `about:config`, change `xpinstall.signatures.required` to `false`.
+
+__Chrome__: Chrome won't let you install unsigned crx files so you'll need to download the [latest release zip file](https://github.com/RobbieLD/tabby/releases/latest/download/tabby-chromium-dev.zip) and load it as an unpacked extension once you've extracted it  an enabled developer mode in chrome. Unfortunately that won't have auto updates.
 
 ### Stable
-Stable releases are available from the FireFox [add on page](https://addons.mozilla.org/en-US/firefox/addon/tabby/)
+Stable releases are available from the [FireFox add-on page](https://addons.mozilla.org/en-US/firefox/addon/tabby/) and soon the Chrome web store page.
 
 ## Usage
 To use the extension you'll need a free unsplash api key which can be obtained from the [Unsplash Dev Portal](https://unsplash.com/developers). You will be prompted for this when you first open the extension.
