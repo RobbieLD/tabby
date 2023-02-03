@@ -73,12 +73,6 @@ jobs:
         if: matrix.browser == 'chromium'
         run: crx pack public -o tabby-${{ matrix.browser }}-${{ matrix.build }}.${{ matrix.extension }}
 
-      - uses: montudor/action-zip@v1
-        name: "Pack Extension"
-        id: web-ext-build
-        with:
-          args: zip -qq -r tabby-${{ matrix.browser }}-${{ matrix.build }}.${{ matrix.extension }} public/build public/images public/index.html public/manifest.json
-
       - name: "Create Release"
         uses: softprops/action-gh-release@v1
         env:
