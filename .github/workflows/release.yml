@@ -67,7 +67,7 @@ jobs:
 
       - name: Install CRX Builder
         if: matrix.browser == 'chromium'
-        run: yarn add crx -g
+        run: npm install crx -g
 
       - name: Build CRX
         if: matrix.browser == 'chromium'
