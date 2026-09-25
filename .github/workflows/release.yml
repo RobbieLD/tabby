@@ -1,77 +1,123 @@
-name: "Release"
-on:
+name: Release
+
+'on':
   push:
+    branches:
+      - master
     tags:
-      - "*.*.*"
+      - '*.*.*'
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    name: "Build"
+    name: Build ${{ matrix.browser }} (${{ matrix.build }})
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        browser:
-          - firefox
-          - chromium
-        build:
-          - release
-          - dev
         include:
           - browser: firefox
+            build: release
+            extension: xpi
+          - browser: firefox
+            build: dev
             extension: xpi
           - browser: chromium
+            build: release
             extension: zip
-        exclude:
-          - browser: chromium
-            build: dev
 
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: yarn
+
+      - name: Set up Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@1.22.22 --activate
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Set release version
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+          TARGET_DIR: targets/${{ matrix.browser }}/${{ matrix.build }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tags must use the numeric X.Y.Z format."
+            exit 1
+          fi
+          find "$TARGET_DIR" -maxdepth 1 -type f -name '*.json' \
+            -exec sed -i "s/__VERSION__/${RELEASE_VERSION}/g" {} +
+          sed -i "s/__VERSION__/${RELEASE_VERSION}/g" src/components/Settings.svelte
+
+      - name: Build
+        run: yarn build
+
+      - name: Type-check
+        run: yarn typecheck
+
+      - name: Package extension
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          BROWSER: ${{ matrix.browser }}
+          BUILD: ${{ matrix.build }}
+          EXTENSION: ${{ matrix.extension }}
+        run: |
+          set -euo pipefail
+          cp "targets/${BROWSER}/${BUILD}/manifest.json" public/manifest.json
+          mkdir -p release-assets
+          archive="tabby-${BROWSER}-${BUILD}.${EXTENSION}"
+          (cd public && zip -q -r "$GITHUB_WORKSPACE/release-assets/$archive" .)
+          update_manifest="targets/${BROWSER}/${BUILD}/update-${BROWSER}-${BUILD}.json"
+          if [[ -f "$update_manifest" ]]; then
+            cp "$update_manifest" release-assets/
+          fi
+
+      - name: Upload release assets
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ matrix.browser }}-${{ matrix.build }}
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    name: Publish GitHub release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: "Checkout"
-        uses: actions/checkout@v1
+      - name: Check out tagged source
+        uses: actions/checkout@v7
 
-      - name: Get Version
-        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
-
-      - name: Set Version In Update Manifest
-        uses: jacobtomlinson/gha-find-replace@v2
+      - name: Download release assets
+        uses: actions/download-artifact@v8
         with:
-          find: "__VERSION__"
-          replace: "${{ env.RELEASE_VERSION }}"
-          regex: false
-          include: "targets/${{ matrix.browser }}/${{ matrix.build }}/*.json"
+          path: release-assets
+          merge-multiple: true
 
-      - name: Set Version In UI
-        uses: jacobtomlinson/gha-find-replace@v2
+      - name: Publish release
+        uses: softprops/action-gh-release@v3
         with:
-          find: "__VERSION__"
-          replace: "${{ env.RELEASE_VERSION }}"
-          regex: false
-          include: "src/components/Settings.svelte"
-
-      - name: Install all dependencies
-        run: yarn install
-
-      - name: Build
-        run: yarn run build
-
-      - name: Copy Manifest
-        run: |
-          cp ./targets/${{ matrix.browser }}/${{ matrix.build }}/manifest.json ./public
-
-      - name: Pack Extension
-        uses: thedoctor0/zip-release@0.7.1
-        with:
-          type: 'zip'
-          filename: tabby-${{ matrix.browser }}-${{ matrix.build }}.${{ matrix.extension }}
-          directory: public
-        
-      - name: "Create Release"
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          files: |
-            public/tabby-${{ matrix.browser }}-${{ matrix.build }}.${{ matrix.extension }}
-            targets/${{ matrix.browser }}/${{ matrix.build }}/update-${{ matrix.browser }}-${{ matrix.build }}.json
+          tag_name: ${{ github.ref_name }}
+          files: release-assets/*
+          fail_on_unmatched_files: true
+          generate_release_notes: true
