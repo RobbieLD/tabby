@@ -1,15 +1,26 @@
-import type Icon from '../models/icon';
+const readFile = (file: File, asDataUrl: boolean): Promise<string> =>
+    new Promise((resolve, reject) => {
+        const reader = new FileReader();
 
-export const encodeImage = (files: FileList, done: (result: string | ArrayBuffer) => void) => {
-    const reader = new FileReader();
-    reader.onloadend = () => done(reader.result);
-    reader.onerror = (error) => console.error(error);
-    reader.readAsDataURL(files[0]);
-}
+        reader.onload = () => {
+            if (typeof reader.result !== "string") {
+                reject(new Error("The selected file could not be read."));
+                return;
+            }
+            resolve(reader.result);
+        };
+        reader.onerror = () =>
+            reject(reader.error || new Error("The selected file could not be read."));
 
-export const parseIcons = (files: FileList, done: (data: string | ArrayBuffer) => void) => {
-    const reader = new FileReader();
-    reader.onload = () => done(reader.result);
-    reader.onerror = (error) => console.error(error);
-    reader.readAsText(files[0]);
-}
+        if (asDataUrl) {
+            reader.readAsDataURL(file);
+        } else {
+            reader.readAsText(file);
+        }
+    });
+
+export const encodeImage = (file: File): Promise<string> =>
+    readFile(file, true);
+
+export const parseIcons = async (file: File): Promise<unknown> =>
+    JSON.parse(await readFile(file, false)) as unknown;

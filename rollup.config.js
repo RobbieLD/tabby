@@ -4,7 +4,7 @@ import commonjs from '@rollup/plugin-commonjs';
 import typescript from '@rollup/plugin-typescript';
 import sveltePreprocess from 'svelte-preprocess';
 import livereload from 'rollup-plugin-livereload';
-import { terser } from "rollup-plugin-terser";
+import terser from '@rollup/plugin-terser';
 import css from 'rollup-plugin-css-only';
 
 // if we're not watching then we're in production

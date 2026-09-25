@@ -8,12 +8,26 @@ export default class UnsplashService {
     }
 
     public async get(): Promise<UnsplashResponse> {
-        const response = await fetch('https://api.unsplash.com/photos/random?orientation=landscape&query=nature&client_id=' + this.key);
-        const data = await response.json();
+        const response = await fetch(
+            'https://api.unsplash.com/photos/random?orientation=landscape&query=nature&client_id=' +
+                encodeURIComponent(this.key)
+        );
+        if (!response.ok) {
+            throw new Error(`Unsplash request failed with HTTP ${response.status}.`);
+        }
+
+        const data = (await response.json()) as {
+            urls?: { full?: string };
+            description?: string | null;
+            alt_description?: string | null;
+        };
+        if (!data || !data.urls || !data.urls.full) {
+            throw new Error("Unsplash did not return a background image.");
+        }
 
         return {
-            url: 'url(' + data.urls.full + ')',
-            description: data.description || data.alt_description
-        }
+            url: `url("${data.urls.full}")`,
+            description: data.description || data.alt_description || "Unsplash photo",
+        };
     }
 }

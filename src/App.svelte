@@ -1,23 +1,36 @@
 <script lang="ts">
     import Clock from "./components/Clock.svelte";
+    import SidePanels from "./components/SidePanels.svelte";
     import Settings from "./components/Settings.svelte";
     import { background } from "./stores/background";
     import { icons } from "./stores/icons";
+    import { azureDevOpsSettings } from "./stores/azure-devops";
 
-    // This is fine to be fire and forget because the page reactivity will
-    // reflect the changes to the response once it's loaded
-    background.init();
+    background.init().catch((error: unknown) => {
+        console.error("Unable to load the Unsplash background.", error);
+    });
+
+    $: showPanels =
+        $azureDevOpsSettings.enabled &&
+        Boolean($azureDevOpsSettings.organization) &&
+        Boolean($azureDevOpsSettings.pat);
 </script>
 
-<div class="main" style="background-image:{$background.url}">
+<div
+    class="main"
+    class:has-panels={showPanels}
+    style="background-image:{$background.url}"
+>
     <Clock />
+    <SidePanels />
     <div class="content">
         {#each $icons as icon}
             <a
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 href={icon.url}
                 title={icon.title}
+                aria-label={icon.title}
             >
                 <img src={icon.icon} alt={icon.title} class="icon" />
             </a>
@@ -41,12 +54,18 @@
             "content content content"
             " . . clock"
             "info info info";
-
         grid-template-columns: auto 1fr auto;
         grid-template-rows: auto 1fr auto;
-
         height: 100vh;
         background-size: cover;
+    }
+
+    .main.has-panels {
+        grid-template-areas:
+            "sidebar content content"
+            "sidebar . clock"
+            "info info info";
+        grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr) auto;
     }
 
     .icon {
@@ -64,6 +83,7 @@
     .content {
         grid-area: content;
         align-self: center;
+        min-width: 0;
         display: grid;
         grid-auto-flow: column;
         gap: 1em;
@@ -73,5 +93,22 @@
         padding-bottom: 0.5em;
         backdrop-filter: blur(20px);
         grid-template-columns: repeat(auto-fill, minmax(2em, 1fr));
+    }
+
+    @media (max-width: 760px) {
+        .main.has-panels {
+            grid-template-areas:
+                "sidebar"
+                "content"
+                "clock"
+                "info";
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: auto auto 1fr auto;
+        }
+
+        .content {
+            grid-auto-flow: row;
+            grid-template-columns: repeat(auto-fit, minmax(3rem, 1fr));
+        }
     }
 </style>

@@ -10,5 +10,5 @@
     "icons": {
       "48": "images/favicon.png"
     },
-    "permissions": ["storage"]
+    "optional_host_permissions": ["https://dev.azure.com/*"]
 }
