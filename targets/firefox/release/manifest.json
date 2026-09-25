@@ -10,5 +10,10 @@
     "icons": {
       "48": "images/favicon.png"
     },
-    "optional_host_permissions": ["https://dev.azure.com/*"]
+    "optional_host_permissions": [
+        "https://dev.azure.com/*",
+        "https://api.open-meteo.com/*",
+        "https://geocoding-api.open-meteo.com/*",
+        "https://api.unsplash.com/*"
+    ]
 }

@@ -2,6 +2,7 @@
     import Clock from "./components/Clock.svelte";
     import SidePanels from "./components/SidePanels.svelte";
     import Settings from "./components/Settings.svelte";
+    import WeatherWidget from "./components/WeatherWidget.svelte";
     import { background } from "./stores/background";
     import { icons } from "./stores/icons";
     import { azureDevOpsSettings } from "./stores/azure-devops";
@@ -10,31 +11,40 @@
         console.error("Unable to load the Unsplash background.", error);
     });
 
-    $: showPanels =
+    $: showLeftPanels =
         $azureDevOpsSettings.enabled &&
         Boolean($azureDevOpsSettings.organization) &&
         Boolean($azureDevOpsSettings.pat);
+
+    window.localStorage.removeItem("outlook-calendar-settings");
 </script>
 
 <div
     class="main"
-    class:has-panels={showPanels}
     style="background-image:{$background.url}"
 >
-    <Clock />
-    <SidePanels />
-    <div class="content">
-        {#each $icons as icon}
-            <a
-                target="_blank"
-                rel="noopener noreferrer"
-                href={icon.url}
-                title={icon.title}
-                aria-label={icon.title}
-            >
-                <img src={icon.icon} alt={icon.title} class="icon" />
-            </a>
-        {/each}
+    <header class="header">
+        <nav class="content" aria-label="Shortcuts">
+            {#each $icons as icon}
+                <a
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    href={icon.url}
+                    title={icon.title}
+                    aria-label={icon.title}
+                >
+                    <img src={icon.icon} alt={icon.title} class="icon" />
+                </a>
+            {/each}
+        </nav>
+    </header>
+    <div
+        class="workspace"
+        class:has-left-panel={showLeftPanels}
+    >
+        <SidePanels />
+        <WeatherWidget />
+        <Clock />
     </div>
     <Settings />
 </div>
@@ -51,26 +61,58 @@
     .main {
         display: grid;
         grid-template-areas:
-            "content content content"
-            " . . clock"
-            "info info info";
-        grid-template-columns: auto 1fr auto;
-        grid-template-rows: auto 1fr auto;
+            "header"
+            "workspace"
+            "info";
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr) auto;
         height: 100vh;
+        overflow: hidden;
         background-size: cover;
     }
 
-    .main.has-panels {
+    .header {
+        grid-area: header;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        align-items: start;
+        min-width: 0;
+    }
+
+    .content {
+        min-width: 0;
+        display: grid;
+        grid-auto-flow: column;
+        gap: 1em;
+        padding: 0.5em 1em;
+        backdrop-filter: blur(20px);
+        grid-template-columns: repeat(auto-fill, minmax(2em, 1fr));
+    }
+
+    .workspace {
+        grid-area: workspace;
+        display: grid;
         grid-template-areas:
-            "sidebar content content"
-            "sidebar . clock"
-            "info info info";
-        grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr) auto;
+            ". . weather"
+            ". . clock";
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-rows: auto minmax(0, 1fr);
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .workspace.has-left-panel {
+        grid-template-areas:
+            "sidebar . weather"
+            "sidebar . clock";
+        grid-template-columns: max-content minmax(0, 1fr) auto;
     }
 
     .icon {
         max-width: 2em;
         filter: grayscale(100%);
+        mix-blend-mode: multiply;
         cursor: pointer;
         transition: transform 0.2s;
     }
@@ -80,30 +122,15 @@
         transform: scale(2) translateY(0.5em);
     }
 
-    .content {
-        grid-area: content;
-        align-self: center;
-        min-width: 0;
-        display: grid;
-        grid-auto-flow: column;
-        gap: 1em;
-        padding-left: 1em;
-        padding-right: 1em;
-        padding-top: 0.5em;
-        padding-bottom: 0.5em;
-        backdrop-filter: blur(20px);
-        grid-template-columns: repeat(auto-fill, minmax(2em, 1fr));
-    }
-
-    @media (max-width: 760px) {
-        .main.has-panels {
+    @media (max-width: 820px) {
+        .workspace.has-left-panel {
             grid-template-areas:
                 "sidebar"
-                "content"
-                "clock"
-                "info";
+                "weather"
+                "clock";
             grid-template-columns: minmax(0, 1fr);
-            grid-template-rows: auto auto 1fr auto;
+            grid-template-rows: auto auto minmax(0, 1fr);
+            overflow-y: auto;
         }
 
         .content {

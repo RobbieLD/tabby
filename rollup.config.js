@@ -6,35 +6,41 @@ import sveltePreprocess from 'svelte-preprocess';
 import livereload from 'rollup-plugin-livereload';
 import terser from '@rollup/plugin-terser';
 import css from 'rollup-plugin-css-only';
+import path from 'node:path';
+import { spawn } from 'node:child_process';
 
 // if we're not watching then we're in production
 const production = !process.env.ROLLUP_WATCH;
 
 function serve() {
-    // Keep a reference to a spawned server process
     let server;
   
     function toExit() {
-      // Kill the server if it exists
-      if (server) server.kill(0);
+      if (server && !server.killed) server.kill();
     }
   
     return {
       writeBundle() {
         if (server) return;
-        // Spawn a child server process
-        server = require('child_process').spawn(
-          'npm',
-          ['run', 'start', '--', '--dev'],
+        const sirvCli = path.join(
+          path.dirname(require.resolve('sirv-cli/package.json')),
+          'bin.js'
+        );
+        server = spawn(
+          process.execPath,
+          [sirvCli, 'public', '--dev'],
           {
             stdio: ['ignore', 'inherit', 'inherit'],
-            shell: true,
+            windowsHide: true,
           }
         );
+        server.on('error', (error) => {
+          console.error('The local preview server could not be started.', error);
+        });
   
-        // Kill the server on process termination or exit
-        process.on('SIGTERM', toExit);
-        process.on('exit', toExit);
+        process.once('SIGINT', toExit);
+        process.once('SIGTERM', toExit);
+        process.once('exit', toExit);
       },
     };
   }
@@ -45,6 +51,7 @@ export default {
         file: 'public/build/bundle.js',
         format: 'iife',
         name: 'app',
+        sourcemap: !production,
     },
     plugins: [
         svelte({

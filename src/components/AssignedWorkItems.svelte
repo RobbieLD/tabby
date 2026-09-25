@@ -4,6 +4,7 @@
         MAX_WORK_ITEMS,
     } from "../services/azure-devops.service";
     import type WorkItem from "../models/work-item";
+    import { isLocalPreview } from "../utils/environment";
     import Panel from "./Panel.svelte";
 
     export let organization: string;
@@ -14,6 +15,7 @@
     let error = "";
     let requestNumber = 0;
     let activeController: AbortController | null = null;
+    const isPreviewMode = isLocalPreview();
 
     $: if (organization && pat) {
         void loadItems(organization, pat);
@@ -29,10 +31,37 @@
         items = [];
 
         try {
-            items = await new AzureDevOpsService(
-                org,
-                token
-            ).getAssignedWorkItems(controller.signal);
+            items = isPreviewMode
+                ? [
+                      {
+                          id: 1042,
+                          title: "Review the new booking flow",
+                          type: "User Story",
+                          state: "Active",
+                          project: "Travel Platform",
+                          url: "https://dev.azure.com/contoso/Travel%20Platform/_workitems/edit/1042",
+                      },
+                      {
+                          id: 1058,
+                          title: "Update accessibility checks",
+                          type: "Task",
+                          state: "New",
+                          project: "Travel Platform",
+                          url: "https://dev.azure.com/contoso/Travel%20Platform/_workitems/edit/1058",
+                      },
+                      {
+                          id: 1084,
+                          title: "Fix a long work item title to check wrapping in the panel",
+                          type: "Bug",
+                          state: "Committed",
+                          project: "Customer Experience",
+                          url: "https://dev.azure.com/contoso/Customer%20Experience/_workitems/edit/1084",
+                      },
+                  ]
+                : await new AzureDevOpsService(
+                      org,
+                      token
+                  ).getAssignedWorkItems(controller.signal);
         } catch (cause) {
             if (!controller.signal.aborted) {
                 error =
@@ -55,17 +84,26 @@
 </script>
 
 <Panel title="Assigned to me">
-    <button
-        slot="actions"
-        class="refresh-button"
-        type="button"
-        on:click={refresh}
-        disabled={loading}
-        aria-label="Refresh assigned work items"
-        title="Refresh"
-    >
-        ↻
-    </button>
+    <div slot="actions" class="panel-actions">
+        {#if isPreviewMode}
+            <span
+                class="preview-badge"
+                title="These are sample work items; localhost does not query Azure DevOps."
+            >
+                Sample data
+            </span>
+        {/if}
+        <button
+            class="refresh-button"
+            type="button"
+            on:click={refresh}
+            disabled={loading}
+            aria-label="Refresh assigned work items"
+            title="Refresh"
+        >
+            ↻
+        </button>
+    </div>
 
     {#if loading}
         <p class="panel-message" aria-live="polite">Loading assigned work items…</p>
@@ -97,7 +135,7 @@
                                     {item.title}
                                 </a>
                             </td>
-                            <td>{item.project || "—"}</td>
+                            <td class="project-cell">{item.project || "—"}</td>
                             <td><span class="state">{item.state}</span></td>
                         </tr>
                     {/each}
@@ -117,10 +155,17 @@
     .retry-button {
         border: 0;
         border-radius: 0.4rem;
-        color: #24343c;
-        background: rgba(30, 43, 50, 0.08);
+        color: white;
+        background: rgba(255, 255, 255, 0.14);
         cursor: pointer;
         font: inherit;
+    }
+
+    .preview-badge {
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 0.65rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
     }
 
     .refresh-button {
@@ -136,7 +181,7 @@
 
     .refresh-button:hover,
     .retry-button:hover {
-        background: rgba(30, 43, 50, 0.15);
+        background: rgba(255, 255, 255, 0.24);
     }
 
     .refresh-button:focus-visible,
@@ -157,48 +202,60 @@
     }
 
     .error {
-        color: #9d2c2c;
+        color: #ffd1d1;
     }
 
     .table-scroll {
-        max-height: min(64vh, 42rem);
-        overflow: auto;
+        min-width: 0;
     }
 
     table {
         width: 100%;
+        table-layout: auto;
         border-collapse: collapse;
+        color: #f5f7fa;
         font-size: 0.8rem;
         text-align: left;
     }
 
     th,
     td {
-        padding: 0.55rem 0.4rem;
-        border-bottom: 1px solid rgba(30, 43, 50, 0.1);
+        padding: 0.55rem 0.25rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.17);
         vertical-align: top;
+        overflow-wrap: normal;
+        word-break: normal;
     }
 
     th {
-        position: sticky;
-        top: 0;
-        background: #f4f6f6;
+        color: rgba(255, 255, 255, 0.72);
         font-size: 0.68rem;
         letter-spacing: 0.04em;
         text-transform: uppercase;
     }
 
+    th:nth-child(1),
+    td:nth-child(1) {
+        width: 3rem;
+    }
+
     .id-cell {
+        color: #f5f7fa;
         white-space: nowrap;
         font-variant-numeric: tabular-nums;
     }
 
-    .title-cell {
-        min-width: 10rem;
+    .project-cell {
+        color: #f5f7fa;
+    }
+
+    .title-cell,
+    .project-cell {
+        overflow-wrap: break-word;
     }
 
     a {
-        color: #205f79;
+        color: #c6edf9;
         text-decoration: none;
     }
 
@@ -209,21 +266,21 @@
     .work-item-type {
         display: block;
         margin-bottom: 0.15rem;
-        color: #65757c;
+        color: rgba(255, 255, 255, 0.7);
         font-size: 0.68rem;
     }
 
     .state {
         display: inline-block;
-        padding: 0.15rem 0.4rem;
+        padding: 0.25rem 0.6rem;
         border-radius: 1rem;
-        background: rgba(30, 43, 50, 0.08);
+        background: rgba(255, 255, 255, 0.14);
         white-space: nowrap;
     }
 
     .list-note {
         margin: 0.65rem 0 0;
-        color: #536269;
+        color: rgba(255, 255, 255, 0.72);
         font-size: 0.72rem;
     }
 </style>

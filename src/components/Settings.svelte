@@ -2,10 +2,17 @@
     import { background } from "../stores/background";
     import { icons } from "../stores/icons";
     import { azureDevOpsSettings } from "../stores/azure-devops";
+    import { weatherLocation } from "../stores/weather";
     import { normalizeOrganization } from "../services/azure-devops.service";
+    import { findWeatherLocation } from "../services/weather.service";
+    import { isLocalPreview } from "../utils/environment";
     import {
         removeAzureDevOpsAccess,
+        removeWeatherAccess,
+        removeUnsplashAccess,
         requestAzureDevOpsAccess,
+        requestWeatherAccess,
+        requestUnsplashAccess,
     } from "../services/extension-permissions";
 
     let showSettingsPanel = false;
@@ -18,12 +25,15 @@
     let organization = $azureDevOpsSettings.organization;
     let personalAccessToken = $azureDevOpsSettings.pat;
     let showAssignedPanel = $azureDevOpsSettings.enabled;
+    let weatherCity = $weatherLocation?.name || "";
     let shortcutMessage = "";
     let shortcutMessageIsError = false;
     let backgroundMessage = "";
     let backgroundMessageIsError = false;
     let adoMessage = "";
     let adoMessageIsError = false;
+    let weatherMessage = "";
+    let weatherMessageIsError = false;
 
     const messageFromError = (error: unknown): string =>
         error instanceof Error ? error.message : "Something went wrong. Please try again.";
@@ -185,15 +195,109 @@
         }
     }
 
+    async function saveWeatherLocation(): Promise<void> {
+        weatherMessage = "";
+        weatherMessageIsError = false;
+        const previousLocation = $weatherLocation;
+        let requestedAccess = false;
+
+        try {
+            const city = weatherCity.trim();
+            if (city.length < 2) {
+                throw new Error("Enter a city or town name.");
+            }
+
+            if (isLocalPreview()) {
+                weatherLocation.save({
+                    name: city,
+                    latitude: 47.6062,
+                    longitude: -122.3321,
+                });
+                weatherMessage = "Preview location saved. Sample weather is shown locally.";
+                return;
+            }
+
+            const granted = await requestWeatherAccess();
+            if (!granted) {
+                throw new Error(
+                    "Open-Meteo access was not granted, so the weather location was not saved."
+                );
+            }
+            requestedAccess = true;
+
+            const location = await findWeatherLocation(city);
+            weatherLocation.save(location);
+            weatherCity = location.name;
+            weatherMessage = `Weather is now set to ${location.name}.`;
+        } catch (error) {
+            weatherMessage = messageFromError(error);
+            if (requestedAccess && !previousLocation) {
+                try {
+                    await removeWeatherAccess();
+                } catch (permissionError) {
+                    weatherMessage +=
+                        " Open-Meteo access could not be revoked: " +
+                        messageFromError(permissionError);
+                }
+            }
+            weatherMessageIsError = true;
+        }
+    }
+
+    async function clearWeatherLocation(): Promise<void> {
+        try {
+            weatherLocation.clear();
+            weatherCity = "";
+        } catch (error) {
+            weatherMessage = messageFromError(error);
+            weatherMessageIsError = true;
+            return;
+        }
+
+        try {
+            const permissionRemoved = await removeWeatherAccess();
+            weatherMessage = permissionRemoved
+                ? "Weather location removed and Open-Meteo access revoked."
+                : "Weather location removed.";
+            weatherMessageIsError = false;
+        } catch (error) {
+            weatherMessage =
+                "Weather location removed, but Open-Meteo access could not be revoked: " +
+                messageFromError(error);
+            weatherMessageIsError = true;
+        }
+    }
+
     async function saveBackgroundKey(): Promise<void> {
         backgroundMessage = "";
         backgroundMessageIsError = false;
 
         try {
-            await background.configure(unsplashKey);
-            backgroundMessage = unsplashKey.trim()
-                ? "Background key saved."
-                : "Backgrounds are off. Your shortcuts and panels will keep working.";
+            const key = unsplashKey.trim();
+            if (key) {
+                const granted = await requestUnsplashAccess();
+                if (!granted) {
+                    throw new Error(
+                        "Unsplash access was not granted, so the background key was not saved."
+                    );
+                }
+                await background.configure(key);
+                backgroundMessage = "Background key saved. Darker photos are preferred.";
+                return;
+            }
+
+            await background.configure("");
+            try {
+                await removeUnsplashAccess();
+            } catch (error) {
+                backgroundMessage =
+                    "Backgrounds were turned off, but Unsplash access could not be revoked: " +
+                    messageFromError(error);
+                backgroundMessageIsError = true;
+                return;
+            }
+            backgroundMessage =
+                "Backgrounds are off. Your shortcuts and panels will keep working.";
         } catch (error) {
             backgroundMessage = messageFromError(error);
             backgroundMessageIsError = true;
@@ -205,6 +309,15 @@
         backgroundMessageIsError = false;
 
         try {
+            if (!unsplashKey.trim()) {
+                throw new Error("Add an Unsplash access key before refreshing the background.");
+            }
+            const granted = await requestUnsplashAccess();
+            if (!granted) {
+                throw new Error(
+                    "Unsplash access was not granted, so the background could not be refreshed."
+                );
+            }
             await background.refresh();
             backgroundMessage = "Background refreshed.";
         } catch (error) {
@@ -214,9 +327,33 @@
     }
 </script>
 
+<svelte:window on:open-settings={openSettings} />
+
 <div class="info">
     <div class="image-credit">
-        {$background.error || $background.description}
+        <span class="background-description">
+            {$background.error || $background.description}
+        </span>
+        {#if !$background.error && $background.photographerName && $background.photographerUrl}
+            <span class="photo-attribution">
+                Photo by
+                <a
+                    href={$background.photographerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    {$background.photographerName}
+                </a>
+                on
+                <a
+                    href="https://unsplash.com/?utm_source=tabby&utm_medium=referral"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Unsplash
+                </a>
+            </span>
+        {/if}
     </div>
     <button
         class="settings-trigger"
@@ -340,8 +477,9 @@
         <section class="settings-section" aria-labelledby="background-heading">
             <h2 id="background-heading">Background</h2>
             <p class="section-description">
-                Use your Unsplash access key for daily photo backgrounds. You can leave
-                this blank to turn backgrounds off.
+                Use your Unsplash access key for daily landscape backgrounds. Saving
+                the key requests Unsplash API access. Tabby prefers photos with a black
+                dominant color when available; leave this blank to turn backgrounds off.
             </p>
             <label class="field">
                 Unsplash access key
@@ -374,11 +512,59 @@
             {/if}
         </section>
 
+        <section class="settings-section" aria-labelledby="weather-heading">
+            <h2 id="weather-heading">Weather</h2>
+            <p class="section-description">
+                Set a city to show current weather in the top-right corner. Temperatures
+                are in Celsius and wind speeds are in km/h.
+            </p>
+            <form on:submit|preventDefault={saveWeatherLocation}>
+                <label class="field">
+                    City or town
+                    <input
+                        type="text"
+                        bind:value={weatherCity}
+                        placeholder="For example, London, United Kingdom"
+                        maxlength="100"
+                        autocomplete="off"
+                    />
+                </label>
+                <p class="field-hint">
+                    Saving requests access to Open-Meteo. Your city is sent to find its
+                    coordinates, then those coordinates are used to fetch weather. The
+                    location is stored in this browser; no GPS permission or API key is
+                    required.
+                </p>
+                <div class="button-row">
+                    <button class="button button-primary" type="submit">
+                        Save weather location
+                    </button>
+                    <button
+                        class="button"
+                        type="button"
+                        on:click={clearWeatherLocation}
+                        disabled={!$weatherLocation}
+                    >
+                        Clear location
+                    </button>
+                </div>
+            </form>
+            {#if weatherMessage}
+                <p
+                    class:error={weatherMessageIsError}
+                    class="form-message"
+                    aria-live="polite"
+                >
+                    {weatherMessage}
+                </p>
+            {/if}
+        </section>
+
         <section class="settings-section" aria-labelledby="panels-heading">
             <h2 id="panels-heading">Optional panels</h2>
             <p class="section-description">
-                Panels appear to the left of your shortcuts when they are configured.
-                You can add more panels here in the future.
+                Configure optional panels to keep your workspace organized. More panels
+                can be added here in the future.
             </p>
 
             <form on:submit|preventDefault={saveAzureDevOpsSettings}>
@@ -454,10 +640,26 @@
     }
 
     .image-credit {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-width: 0;
+    }
+
+    .background-description {
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+
+    .photo-attribution {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    .image-credit a {
+        color: inherit;
     }
 
     .settings-trigger {

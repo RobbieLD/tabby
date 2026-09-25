@@ -1,3 +1,5 @@
+import { isLocalPreview } from "../utils/environment";
+
 interface HostPermission {
     origins: string[];
 }
@@ -30,25 +32,24 @@ interface ExtensionWindow extends Window {
     chrome?: ChromeExtensionApi;
 }
 
-const azureDevOpsHostPermission: HostPermission = {
-    origins: ["https://dev.azure.com/*"],
-};
-
-export const requestAzureDevOpsAccess = (): Promise<boolean> => {
+const requestHostAccess = (permission: HostPermission): Promise<boolean> => {
     const extensionWindow = window as ExtensionWindow;
     if (extensionWindow.browser?.permissions) {
-        return extensionWindow.browser.permissions.request(azureDevOpsHostPermission);
+        return extensionWindow.browser.permissions.request(permission);
     }
 
     const chromeApi = extensionWindow.chrome;
     if (!chromeApi?.permissions) {
+        if (isLocalPreview()) {
+            return Promise.resolve(true);
+        }
         return Promise.reject(
             new Error("Open Tabby as a Chrome or Firefox extension to enable this panel.")
         );
     }
 
     return new Promise((resolve, reject) => {
-        chromeApi.permissions?.request(azureDevOpsHostPermission, (granted) => {
+        chromeApi.permissions?.request(permission, (granted) => {
             const error = chromeApi.runtime?.lastError;
             if (error) {
                 reject(
@@ -63,10 +64,10 @@ export const requestAzureDevOpsAccess = (): Promise<boolean> => {
     });
 };
 
-export const removeAzureDevOpsAccess = (): Promise<boolean> => {
+const removeHostAccess = (permission: HostPermission): Promise<boolean> => {
     const extensionWindow = window as ExtensionWindow;
     if (extensionWindow.browser?.permissions) {
-        return extensionWindow.browser.permissions.remove(azureDevOpsHostPermission);
+        return extensionWindow.browser.permissions.remove(permission);
     }
 
     const chromeApi = extensionWindow.chrome;
@@ -75,7 +76,7 @@ export const removeAzureDevOpsAccess = (): Promise<boolean> => {
     }
 
     return new Promise((resolve, reject) => {
-        chromeApi.permissions?.remove(azureDevOpsHostPermission, (removed) => {
+        chromeApi.permissions?.remove(permission, (removed) => {
             const error = chromeApi.runtime?.lastError;
             if (error) {
                 reject(
@@ -89,3 +90,32 @@ export const removeAzureDevOpsAccess = (): Promise<boolean> => {
         });
     });
 };
+
+export const requestAzureDevOpsAccess = (): Promise<boolean> =>
+    requestHostAccess({ origins: ["https://dev.azure.com/*"] });
+
+export const removeAzureDevOpsAccess = (): Promise<boolean> =>
+    removeHostAccess({ origins: ["https://dev.azure.com/*"] });
+
+const OPEN_METEO_PERMISSION: HostPermission = {
+    origins: [
+        "https://api.open-meteo.com/*",
+        "https://geocoding-api.open-meteo.com/*",
+    ],
+};
+
+export const requestWeatherAccess = (): Promise<boolean> =>
+    requestHostAccess(OPEN_METEO_PERMISSION);
+
+export const removeWeatherAccess = (): Promise<boolean> =>
+    removeHostAccess(OPEN_METEO_PERMISSION);
+
+const UNSPLASH_PERMISSION: HostPermission = {
+    origins: ["https://api.unsplash.com/*"],
+};
+
+export const requestUnsplashAccess = (): Promise<boolean> =>
+    requestHostAccess(UNSPLASH_PERMISSION);
+
+export const removeUnsplashAccess = (): Promise<boolean> =>
+    removeHostAccess(UNSPLASH_PERMISSION);

@@ -5,12 +5,16 @@ import type UnsplashResponse from "../models/unsplash-response";
 const setCache = (response: UnsplashResponse) => {
     window.localStorage.setItem("url", response.url);
     window.localStorage.setItem("description", response.description);
+    window.localStorage.setItem("photographer", response.photographerName);
+    window.localStorage.setItem("photographerUrl", response.photographerUrl);
     window.localStorage.setItem("hour", new Date().getHours().toString());
 };
 
 const NO_BACKGROUND: UnsplashResponse = {
     description: "Add an Unsplash access key in settings to enable backgrounds.",
     url: "",
+    photographerName: "",
+    photographerUrl: "",
 };
 
 const createBackground = () => {
@@ -56,6 +60,11 @@ const createBackground = () => {
             }
 
             window.localStorage.removeItem("unsplash");
+            window.localStorage.removeItem("url");
+            window.localStorage.removeItem("description");
+            window.localStorage.removeItem("photographer");
+            window.localStorage.removeItem("photographerUrl");
+            window.localStorage.removeItem("hour");
             set({ ...NO_BACKGROUND, error: "" });
         },
         init: async () => {
@@ -68,20 +77,29 @@ const createBackground = () => {
 
             const cachedUrl = window.localStorage.getItem("url") || "";
             const cacheDescription = window.localStorage.getItem("description") || "";
+            const cachedPhotographer = window.localStorage.getItem("photographer") || "";
+            const cachedPhotographerUrl =
+                window.localStorage.getItem("photographerUrl") || "";
+            const hasCachedImage = Boolean(cachedUrl && cacheDescription);
+            if (hasCachedImage) {
+                set({
+                    description: cacheDescription,
+                    url: cachedUrl,
+                    photographerName: cachedPhotographer,
+                    photographerUrl: cachedPhotographerUrl,
+                    error: "",
+                });
+            }
+
             if (
-                !cachedUrl ||
-                !cacheDescription ||
+                !hasCachedImage ||
+                !cachedPhotographer ||
+                !cachedPhotographerUrl ||
                 new Date().getHours().toString() !== hour
             ) {
                 await load(key);
                 return;
             }
-
-            set({
-                description: cacheDescription,
-                url: cachedUrl,
-                error: "",
-            });
         },
     };
 };
