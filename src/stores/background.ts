@@ -23,6 +23,7 @@ const createBackground = () => {
         ...NO_BACKGROUND,
         error: "",
     });
+    let localPreviewKey = "";
 
     const load = async (key: string): Promise<UnsplashResponse> => {
         try {
@@ -44,7 +45,7 @@ const createBackground = () => {
     return {
         subscribe,
         refresh: async () => {
-            const key = window.localStorage.getItem("unsplash") || "";
+            const key = window.localStorage.getItem("unsplash") || localPreviewKey;
             if (!key) {
                 const error = new Error("Add an Unsplash access key in settings first.");
                 update((current) => ({ ...current, error: error.message }));
@@ -56,10 +57,12 @@ const createBackground = () => {
         configure: async (value: string) => {
             const key = value.trim();
             if (key) {
+                localPreviewKey = "";
                 window.localStorage.setItem("unsplash", key);
                 return load(key);
             }
 
+            localPreviewKey = "";
             window.localStorage.removeItem("unsplash");
             window.localStorage.removeItem("url");
             window.localStorage.removeItem("description");
@@ -68,8 +71,10 @@ const createBackground = () => {
             window.localStorage.removeItem("hour");
             set({ ...NO_BACKGROUND, error: "" });
         },
-        init: async () => {
-            const key = window.localStorage.getItem("unsplash");
+        init: async (localKey = "") => {
+            localPreviewKey = localKey.trim();
+            const key =
+                localPreviewKey || window.localStorage.getItem("unsplash") || "";
             const hour = window.localStorage.getItem("hour");
             if (!key) {
                 set({ ...NO_BACKGROUND, error: "" });

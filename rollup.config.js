@@ -8,9 +8,38 @@ import terser from '@rollup/plugin-terser';
 import css from 'rollup-plugin-css-only';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
+import dotenv from 'dotenv';
+import replace from '@rollup/plugin-replace';
 
 // if we're not watching then we're in production
 const production = !process.env.ROLLUP_WATCH;
+const emptyLocalPreviewConfig = {
+    azureDevOpsOrganization: '',
+    azureDevOpsPat: '',
+    unsplashAccessKey: '',
+};
+
+if (!production) {
+    const localEnvFile = path.resolve('.env.local');
+    if (existsSync(localEnvFile)) {
+        const localEnv = dotenv.parse(readFileSync(localEnvFile));
+        for (const [name, value] of Object.entries(localEnv)) {
+            if (process.env[name] === undefined) {
+                process.env[name] = value;
+            }
+        }
+    }
+}
+
+const localPreviewConfig = production
+    ? emptyLocalPreviewConfig
+    : {
+          azureDevOpsOrganization:
+              process.env.TABBY_AZURE_DEVOPS_ORGANIZATION || '',
+          azureDevOpsPat: process.env.TABBY_AZURE_DEVOPS_PAT || '',
+          unsplashAccessKey: process.env.TABBY_UNSPLASH_ACCESS_KEY || '',
+      };
 
 function serve() {
     let server;
@@ -54,6 +83,12 @@ export default {
         sourcemap: !production,
     },
     plugins: [
+        replace({
+            preventAssignment: true,
+            values: {
+                __TABBY_LOCAL_CONFIG__: JSON.stringify(localPreviewConfig),
+            },
+        }),
         svelte({
             preprocess: sveltePreprocess(),
             include: 'src/**/*.svelte',

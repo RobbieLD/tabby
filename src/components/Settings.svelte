@@ -8,7 +8,7 @@
         getBrowserWeatherLocation,
         resolveWeatherPlaceName,
     } from "../services/weather.service";
-    import { isLocalPreview } from "../utils/environment";
+    import { isLocalPreview, localPreviewConfig } from "../utils/environment";
     import {
         removeAzureDevOpsAccess,
         removeAuthenticationInfoAccess,
@@ -24,13 +24,21 @@
     let showSettingsPanel = false;
     let settingsDialog: HTMLDialogElement;
     let removeIconTitle = "";
+    let reorderIconTitle = "";
     let newIconTitle = "";
     let newIconUrl = "";
     let files: FileList | null = null;
-    let unsplashKey = window.localStorage.getItem("unsplash") || "";
+    let unsplashKey =
+        localPreviewConfig.unsplashAccessKey ||
+        window.localStorage.getItem("unsplash") ||
+        "";
     let organization = $azureDevOpsSettings.organization;
     let personalAccessToken = $azureDevOpsSettings.pat;
     let showAssignedPanel = $azureDevOpsSettings.enabled;
+    const usingLocalAzureDevOps =
+        isLocalPreview() &&
+        Boolean(localPreviewConfig.azureDevOpsOrganization) &&
+        Boolean(localPreviewConfig.azureDevOpsPat);
     let shortcutMessage = "";
     let shortcutMessageIsError = false;
     let backgroundMessage = "";
@@ -41,6 +49,9 @@
     let iconPermissionMessageIsError = false;
     let weatherMessage = "";
     let weatherMessageIsError = false;
+    $: reorderIconIndex = $icons.findIndex(
+        (icon) => icon.title === reorderIconTitle
+    );
 
     const messageFromError = (error: unknown): string =>
         error instanceof Error ? error.message : "Something went wrong. Please try again.";
@@ -111,11 +122,30 @@
             icons.remove(removeIconTitle);
             shortcutMessage = `${removeIconTitle} was removed from your shortcuts.`;
             shortcutMessageIsError = false;
+            if (reorderIconTitle === removeIconTitle) {
+                reorderIconTitle = "";
+            }
             removeIconTitle = "";
         } catch (error) {
             shortcutMessage = messageFromError(error);
             shortcutMessageIsError = true;
         }
+    }
+
+    function moveShortcut(direction: -1 | 1): void {
+        if (reorderIconIndex < 0) {
+            return;
+        }
+
+        const destination = reorderIconIndex + direction;
+        if (destination < 0 || destination >= $icons.length) {
+            return;
+        }
+
+        const title = reorderIconTitle;
+        icons.reorder(reorderIconIndex, destination);
+        shortcutMessage = `${title} moved ${direction < 0 ? "up" : "down"}.`;
+        shortcutMessageIsError = false;
     }
 
     function exportIcons(): void {
@@ -141,6 +171,7 @@
             shortcutMessage = "Your shortcuts were imported.";
             shortcutMessageIsError = false;
             removeIconTitle = "";
+            reorderIconTitle = "";
         } catch (error) {
             shortcutMessage = messageFromError(error);
             shortcutMessageIsError = true;
@@ -169,6 +200,8 @@
                 organization: normalizedOrganization,
                 pat: normalizedPat,
                 enabled: showAssignedPanel,
+                hideCompletedAndDone:
+                    $azureDevOpsSettings.hideCompletedAndDone,
             });
             organization = savedSettings.organization;
             personalAccessToken = savedSettings.pat;
@@ -446,8 +479,9 @@
         <section class="settings-section" aria-labelledby="shortcuts-heading">
             <h2 id="shortcuts-heading">Shortcuts</h2>
             <p class="section-description">
-                Add a website to the menu bar. Tabby finds its favicon automatically;
-                upload an image if you prefer to use a local icon.
+                Add websites to the menu bar and drag shortcuts to reorder them. You can
+                also select a shortcut below and move it with the keyboard-friendly controls.
+                Upload a local image if you prefer not to use an online favicon.
             </p>
 
             <form on:submit|preventDefault={saveIcon}>
@@ -523,6 +557,36 @@
                 >
                     Remove
                 </button>
+            </div>
+
+            <div class="shortcut-order">
+                <label class="field">
+                    Reorder a shortcut
+                    <select bind:value={reorderIconTitle} disabled={$icons.length < 2}>
+                        <option value="" disabled>Select a shortcut</option>
+                        {#each $icons as icon}
+                            <option value={icon.title}>{icon.title}</option>
+                        {/each}
+                    </select>
+                </label>
+                <div class="button-row">
+                    <button
+                        class="button"
+                        type="button"
+                        on:click={() => moveShortcut(-1)}
+                        disabled={reorderIconIndex <= 0}
+                    >
+                        Move up
+                    </button>
+                    <button
+                        class="button"
+                        type="button"
+                        on:click={() => moveShortcut(1)}
+                        disabled={reorderIconIndex < 0 || reorderIconIndex >= $icons.length - 1}
+                    >
+                        Move down
+                    </button>
+                </div>
             </div>
 
             <div class="button-row">
@@ -644,55 +708,64 @@
                 can be added here in the future.
             </p>
 
-            <form on:submit|preventDefault={saveAzureDevOpsSettings}>
-                <h3>Azure DevOps</h3>
-                <p class="section-description">
-                    Show your open work items assigned to you. Both fields are required.
-                </p>
-                <label class="field">
-                    Organization
-                    <input
-                        type="text"
-                        bind:value={organization}
-                        placeholder="For example, contoso"
-                        autocomplete="organization"
-                    />
-                </label>
-                <label class="field">
-                    Personal access token (PAT)
-                    <input
-                        type="password"
-                        bind:value={personalAccessToken}
-                        autocomplete="new-password"
-                        placeholder="Paste your Azure DevOps PAT"
-                    />
-                </label>
+            {#if usingLocalAzureDevOps}
                 <p class="field-hint">
-                    Create a PAT with <strong>Work Items (Read)</strong> access. It is stored
-                    only in this browser profile and sent only to Azure DevOps.
-                    Browser access to dev.azure.com is requested when you save an enabled panel.
+                    The local preview is using live Azure DevOps credentials from
+                    <code>.env.local</code>. Edit that file and restart <code>yarn dev</code>
+                    to change or disable the local connection. The credentials are not
+                    saved in browser storage.
                 </p>
-                <label class="checkbox-field">
-                    <input type="checkbox" bind:checked={showAssignedPanel} />
-                    Show the assigned work panel
-                </label>
-                <div class="button-row">
-                    <button class="button button-primary" type="submit">
-                        Save panel settings
-                    </button>
-                    <button class="button" type="button" on:click={clearAzureDevOpsSettings}>
-                        Remove PAT
-                    </button>
-                </div>
-            </form>
-            {#if adoMessage}
-                <p
-                    class:error={adoMessageIsError}
-                    class="form-message"
-                    aria-live="polite"
-                >
-                    {adoMessage}
-                </p>
+            {:else}
+                <form on:submit|preventDefault={saveAzureDevOpsSettings}>
+                    <h3>Azure DevOps</h3>
+                    <p class="section-description">
+                        Show your open work items assigned to you. Both fields are required.
+                    </p>
+                    <label class="field">
+                        Organization
+                        <input
+                            type="text"
+                            bind:value={organization}
+                            placeholder="For example, contoso"
+                            autocomplete="organization"
+                        />
+                    </label>
+                    <label class="field">
+                        Personal access token (PAT)
+                        <input
+                            type="password"
+                            bind:value={personalAccessToken}
+                            autocomplete="new-password"
+                            placeholder="Paste your Azure DevOps PAT"
+                        />
+                    </label>
+                    <p class="field-hint">
+                        Create a PAT with <strong>Work Items (Read)</strong> access. It is stored
+                        only in this browser profile and sent only to Azure DevOps.
+                        Browser access to dev.azure.com is requested when you save an enabled panel.
+                    </p>
+                    <label class="checkbox-field">
+                        <input type="checkbox" bind:checked={showAssignedPanel} />
+                        Show the assigned work panel
+                    </label>
+                    <div class="button-row">
+                        <button class="button button-primary" type="submit">
+                            Save panel settings
+                        </button>
+                        <button class="button" type="button" on:click={clearAzureDevOpsSettings}>
+                            Remove PAT
+                        </button>
+                    </div>
+                </form>
+                {#if adoMessage}
+                    <p
+                        class:error={adoMessageIsError}
+                        class="form-message"
+                        aria-live="polite"
+                    >
+                        {adoMessage}
+                    </p>
+                {/if}
             {/if}
         </section>
 

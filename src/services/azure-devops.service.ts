@@ -46,7 +46,10 @@ export default class AzureDevOpsService {
         }
     }
 
-    public async getAssignedWorkItems(signal?: AbortSignal): Promise<WorkItem[]> {
+    public async getAssignedWorkItems(
+        signal?: AbortSignal,
+        hideCompletedAndDone = true
+    ): Promise<WorkItem[]> {
         const wiqlUrl = new URL(
             `https://dev.azure.com/${encodeURIComponent(
                 this.organization
@@ -55,6 +58,9 @@ export default class AzureDevOpsService {
         wiqlUrl.searchParams.set("api-version", "7.1");
         wiqlUrl.searchParams.set("$top", MAX_WORK_ITEMS.toString());
 
+        const stateFilter = hideCompletedAndDone
+            ? "AND [System.State] NOT IN ('Closed', 'Done', 'Removed', 'Resolved', 'Completed') "
+            : "AND [System.State] NOT IN ('Closed', 'Removed', 'Resolved') ";
         const wiqlResponse = await this.request(wiqlUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -62,7 +68,7 @@ export default class AzureDevOpsService {
                 query:
                     "SELECT [System.Id] FROM WorkItems " +
                     "WHERE [System.AssignedTo] = @Me " +
-                    "AND [System.State] NOT IN ('Closed', 'Done', 'Removed', 'Resolved') " +
+                    stateFilter +
                     "ORDER BY [System.ChangedDate] DESC",
             }),
             signal,

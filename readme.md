@@ -10,10 +10,11 @@ Tabby is a customizable new-tab page for Firefox and Chrome, built because I cou
 - Uses a dark default background and a first-run welcome panel with a shortcut to Settings.
 - Shows current weather in the top-right corner when a location is configured.
 - Add and remove shortcuts for apps and websites.
+- Reorder shortcuts by dragging them in the header or using the Move up/Move down controls in Settings.
 - Background URLs are cached for an hour to avoid excess API usage.
 - Settings let you configure backgrounds, manage shortcuts, and manually refresh the photo.
 - Import and export icon lists.
-- Optional Azure DevOps panel lists your open assigned work items with direct links.
+- Optional Azure DevOps panel lists your open assigned work items with direct links and a filter for completed/done items.
 - Supports both Chrome and Firefox.
 
 ## Installation
@@ -38,14 +39,16 @@ Pushing a numeric `X.Y.Z` tag submits the Firefox release build and its reproduc
 ## Usage
 To use Unsplash backgrounds, add an API access key from the [Unsplash Dev Portal](https://unsplash.com/developers) in Settings. Backgrounds are optional; saving the key requests access to Unsplash. Tabby uses Unsplash's documented black-dominant landscape search filter to prefer darker photos and displays photographer attribution.
 
-To show the Azure DevOps panel, enter your organization name (the part after `dev.azure.com/`) and a personal access token in Settings. Create a PAT with the **Work Items (Read)** scope and an expiry that suits you. The browser asks for Azure DevOps access only when you save a complete, enabled panel configuration. The PAT is stored in the extension's local browser storage and is sent only to Azure DevOps. Remove it from Settings at any time to hide the panel, delete the saved token, and revoke that access. The panel shows up to 100 of your most recently changed, open work items.
+To show the Azure DevOps panel, enter your organization name (the part after `dev.azure.com/`) and a personal access token in Settings. Create a PAT with the **Work Items (Read)** scope and an expiry that suits you. The browser asks for Azure DevOps access only when you save a complete, enabled panel configuration. The PAT is stored in the extension's local browser storage and is sent only to Azure DevOps. The panel shows up to 100 of your most recently changed, open work items; use its **Hide completed and done** checkbox to include or exclude those states. Remove the PAT from Settings at any time to hide the panel, delete the saved token, and revoke access.
 
 To show current weather, choose **Use browser location** in **Settings → Weather** and grant the browser's location permission. Tabby requests location only after you click the button; it does not track location in the background. Coordinates are saved in this browser and sent directly to [Open-Meteo](https://open-meteo.com/) for weather and [BigDataCloud](https://www.bigdatacloud.com/geocoding-apis/free-reverse-geocode-to-city-api) to find a nearby city or locality; these services also receive your network IP address. No API keys are required. Clear the location in Settings to delete the saved coordinates and revoke location/weather access. The widget refreshes weather every 15 minutes and links to both data providers for attribution.
 
 Automatic shortcut icons use Google's S2 favicon service and send the site's origin to Google. If you prefer not to use the service, upload a local image when adding the shortcut; uploaded images remain in local browser storage.
 
 ## Development
-The code is written in [Svelte](https://svelte.dev/). Use Node.js 20 or newer, clone the repository, and run `yarn install`. Start the live-reload preview with `yarn dev` and open [http://localhost:8080](http://localhost:8080); edit a source or style file to see the page rebuild and reload. Use sample organization/token values when saving optional panel settings locally: on localhost, Tabby uses sample Azure DevOps and weather data and makes no API requests. Packaged extension permissions and live service connections still need to be tested in the target browser. Build with `yarn build` or check TypeScript with `yarn typecheck`.
+The code is written in [Svelte](https://svelte.dev/). Use Node.js 20 or newer, clone the repository, and run `yarn install`. Start the live-reload preview with `yarn dev` and open [http://localhost:8080](http://localhost:8080); source and style edits rebuild and reload automatically.
+
+For live local integrations, copy `.env.example` to `.env.local` and set `TABBY_AZURE_DEVOPS_ORGANIZATION`, `TABBY_AZURE_DEVOPS_PAT`, and/or `TABBY_UNSPLASH_ACCESS_KEY`. The Azure DevOps panel uses live data only when both organization and PAT are present; otherwise it shows labelled sample data. The Unsplash key loads real photos. Restart `yarn dev` after changing `.env.local`. It is Git-ignored. Dev credentials are injected into the local browser bundle, so use this only on your own machine and do not expose the dev server or share its bundle. `yarn build` ignores `.env.local` and injects empty dev settings. Build with `yarn build` or check TypeScript with `yarn typecheck`.
 
 ## Contributing
 Contributions in the form of PRs are welcome. This started as a little project for me to make something I wanted but since I've gone to all that work I figured I'd put it on the Mozilla add-on hubs so other's could use it too. There's a lot of features around customisation which could be added but I haven't bothered with at the moment since it's how I want it, but I'll probably get to some of them in the future. 

@@ -60,6 +60,24 @@ const createIcons = () => {
                 window.localStorage.setItem("icons", JSON.stringify(updatedIcons));
                 return updatedIcons;
             }),
+        reorder: (fromIndex: number, toIndex: number) =>
+            update((items) => {
+                if (
+                    fromIndex < 0 ||
+                    fromIndex >= items.length ||
+                    toIndex < 0 ||
+                    toIndex >= items.length ||
+                    fromIndex === toIndex
+                ) {
+                    return items;
+                }
+
+                const updatedIcons = [...items];
+                const [movedIcon] = updatedIcons.splice(fromIndex, 1);
+                updatedIcons.splice(toIndex, 0, movedIcon);
+                window.localStorage.setItem("icons", JSON.stringify(updatedIcons));
+                return updatedIcons;
+            }),
         add: async (title: string, url: string, file?: File) => {
             const cleanTitle = title.trim();
             if (!cleanTitle) {

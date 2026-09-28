@@ -9,12 +9,13 @@
     import { icons } from "./stores/icons";
     import { azureDevOpsSettings } from "./stores/azure-devops";
     import { weatherLocation } from "./stores/weather";
+    import { isLocalPreview, localPreviewConfig } from "./utils/environment";
     import {
         hasWebsiteActivityAccess,
         websiteActivityAccess,
     } from "./services/extension-permissions";
 
-    background.init().catch((error: unknown) => {
+    background.init(localPreviewConfig.unsplashAccessKey).catch((error: unknown) => {
         console.error("Unable to load the Unsplash background.", error);
     });
 
@@ -27,19 +28,85 @@
             });
     });
 
+    const hasLocalAzureDevOpsCredentials =
+        isLocalPreview() &&
+        Boolean(localPreviewConfig.azureDevOpsOrganization) &&
+        Boolean(localPreviewConfig.azureDevOpsPat);
+    $: panelOrganization = hasLocalAzureDevOpsCredentials
+        ? localPreviewConfig.azureDevOpsOrganization
+        : $azureDevOpsSettings.organization;
+    $: panelPat = hasLocalAzureDevOpsCredentials
+        ? localPreviewConfig.azureDevOpsPat
+        : $azureDevOpsSettings.pat;
     $: showLeftPanels =
-        $azureDevOpsSettings.enabled &&
-        Boolean($azureDevOpsSettings.organization) &&
-        Boolean($azureDevOpsSettings.pat);
+        hasLocalAzureDevOpsCredentials ||
+        ($azureDevOpsSettings.enabled &&
+            Boolean($azureDevOpsSettings.organization) &&
+            Boolean($azureDevOpsSettings.pat));
     $: showWelcome =
         $icons.length === 0 &&
         !showLeftPanels &&
         !$weatherLocation &&
         !$background.url;
 
+    let draggedShortcutIndex: number | null = null;
+    let dragTargetIndex: number | null = null;
+    let suppressClickUntil = 0;
+
     window.localStorage.removeItem("outlook-calendar-settings");
 
     const isRemoteIcon = (icon: string): boolean => /^https?:\/\//i.test(icon);
+
+    function startDraggingShortcut(event: DragEvent, index: number): void {
+        draggedShortcutIndex = index;
+        dragTargetIndex = index;
+        event.dataTransfer?.setData("text/plain", index.toString());
+        if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = "move";
+        }
+    }
+
+    function allowShortcutDrop(event: DragEvent, index: number): void {
+        event.preventDefault();
+        dragTargetIndex = index;
+        if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = "move";
+        }
+    }
+
+    function dropShortcut(event: DragEvent, targetIndex: number): void {
+        event.preventDefault();
+        const transferredIndex = event.dataTransfer?.getData("text/plain") || "";
+        const transferIndex = transferredIndex ? Number(transferredIndex) : NaN;
+        const sourceIndex =
+            draggedShortcutIndex ??
+            (Number.isInteger(transferIndex) ? transferIndex : null);
+
+        if (sourceIndex !== null) {
+            if (sourceIndex !== targetIndex) {
+                icons.reorder(sourceIndex, targetIndex);
+            }
+            suppressClickUntil = Date.now() + 500;
+        }
+
+        draggedShortcutIndex = null;
+        dragTargetIndex = null;
+    }
+
+    function finishDraggingShortcut(): void {
+        if (draggedShortcutIndex !== null) {
+            suppressClickUntil = Date.now() + 500;
+        }
+        draggedShortcutIndex = null;
+        dragTargetIndex = null;
+    }
+
+    function openShortcut(event: MouseEvent): void {
+        if (Date.now() < suppressClickUntil) {
+            event.preventDefault();
+            suppressClickUntil = 0;
+        }
+    }
 </script>
 
 <div
@@ -49,13 +116,27 @@
 >
     <header class="header">
         <nav class="content" aria-label="Shortcuts">
-            {#each $icons as icon}
+            <span id="shortcut-reorder-help" class="visually-hidden">
+                Drag to reorder this shortcut. You can also move shortcuts with the
+                controls in Settings.
+            </span>
+            {#each $icons as icon, index}
                 <a
+                    class="shortcut-link"
                     target="_blank"
                     rel="noopener noreferrer"
                     href={icon.url}
                     title={icon.title}
                     aria-label={icon.title}
+                    aria-describedby="shortcut-reorder-help"
+                    draggable="true"
+                    class:is-dragging={draggedShortcutIndex === index}
+                    class:drop-target={dragTargetIndex === index && draggedShortcutIndex !== index}
+                    on:dragstart={(event) => startDraggingShortcut(event, index)}
+                    on:dragover={(event) => allowShortcutDrop(event, index)}
+                    on:drop={(event) => dropShortcut(event, index)}
+                    on:dragend={finishDraggingShortcut}
+                    on:click={openShortcut}
                 >
                     {#if !isRemoteIcon(icon.icon) || $websiteActivityAccess}
                         <img src={icon.icon} alt={icon.title} class="icon" />
@@ -73,7 +154,11 @@
         class:has-left-panel={showLeftPanels}
         class:show-welcome={showWelcome}
     >
-        <SidePanels />
+        <SidePanels
+            enabled={showLeftPanels}
+            organization={panelOrganization}
+            pat={panelPat}
+        />
         {#if showWelcome}
             <WelcomePanel />
         {/if}
@@ -124,6 +209,32 @@
         grid-template-columns: repeat(auto-fill, minmax(2em, 1fr));
     }
 
+    .shortcut-link {
+        display: grid;
+        place-items: center;
+        min-width: 0;
+        border-radius: 0.35rem;
+        cursor: grab;
+    }
+
+    .shortcut-link:active {
+        cursor: grabbing;
+    }
+
+    .shortcut-link.is-dragging {
+        opacity: 0.35;
+    }
+
+    .shortcut-link.drop-target {
+        outline: 2px dashed rgba(255, 255, 255, 0.8);
+        outline-offset: 0.2rem;
+    }
+
+    .shortcut-link:focus-visible {
+        outline: 2px solid #c6edf9;
+        outline-offset: 0.2rem;
+    }
+
     .workspace {
         grid-area: workspace;
         display: grid;
@@ -157,6 +268,18 @@
         mix-blend-mode: multiply;
         cursor: pointer;
         transition: transform 0.2s;
+    }
+
+    .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
     }
 
     .icon:hover {

@@ -4,8 +4,9 @@
         MAX_WORK_ITEMS,
     } from "../services/azure-devops.service";
     import type WorkItem from "../models/work-item";
-    import { isLocalPreview } from "../utils/environment";
+    import { isLocalPreview, localPreviewConfig } from "../utils/environment";
     import { hasAuthenticationInfoAccess } from "../services/extension-permissions";
+    import { azureDevOpsSettings } from "../stores/azure-devops";
     import Panel from "./Panel.svelte";
 
     export let organization: string;
@@ -17,12 +18,26 @@
     let requestNumber = 0;
     let activeController: AbortController | null = null;
     const isPreviewMode = isLocalPreview();
+    const useSampleData =
+        isPreviewMode &&
+        !(
+            localPreviewConfig.azureDevOpsOrganization &&
+            localPreviewConfig.azureDevOpsPat
+        );
 
     $: if (organization && pat) {
-        void loadItems(organization, pat);
+        void loadItems(
+            organization,
+            pat,
+            $azureDevOpsSettings.hideCompletedAndDone
+        );
     }
 
-    async function loadItems(org: string, token: string): Promise<void> {
+    async function loadItems(
+        org: string,
+        token: string,
+        hideCompletedAndDone: boolean
+    ): Promise<void> {
         activeController?.abort();
         const controller = new AbortController();
         activeController = controller;
@@ -41,7 +56,7 @@
                 );
             }
 
-            items = isPreviewMode
+            items = useSampleData
                 ? [
                       {
                           id: 1042,
@@ -67,11 +82,35 @@
                           project: "Customer Experience",
                           url: "https://dev.azure.com/contoso/Customer%20Experience/_workitems/edit/1084",
                       },
+                      {
+                          id: 1090,
+                          title: "Completed design review",
+                          type: "Task",
+                          state: "Completed",
+                          project: "Travel Platform",
+                          url: "https://dev.azure.com/contoso/Travel%20Platform/_workitems/edit/1090",
+                      },
+                      {
+                          id: 1091,
+                          title: "Done: update release notes",
+                          type: "Task",
+                          state: "Done",
+                          project: "Travel Platform",
+                          url: "https://dev.azure.com/contoso/Travel%20Platform/_workitems/edit/1091",
+                      },
                   ]
+                      .filter((item) =>
+                          hideCompletedAndDone
+                              ? !["completed", "done"].includes(item.state.toLowerCase())
+                              : true
+                      )
                 : await new AzureDevOpsService(
                       org,
                       token
-                  ).getAssignedWorkItems(controller.signal);
+                  ).getAssignedWorkItems(
+                      controller.signal,
+                      hideCompletedAndDone
+                  );
         } catch (cause) {
             if (!controller.signal.aborted) {
                 error =
@@ -87,7 +126,27 @@
     }
 
     function refresh(): void {
-        void loadItems(organization, pat);
+        void loadItems(
+            organization,
+            pat,
+            $azureDevOpsSettings.hideCompletedAndDone
+        );
+    }
+
+    function updateCompletedFilter(event: Event): void {
+        const checkbox = event.currentTarget as HTMLInputElement;
+        try {
+            azureDevOpsSettings.save({
+                ...$azureDevOpsSettings,
+                hideCompletedAndDone: checkbox.checked,
+            });
+        } catch (cause) {
+            error =
+                cause instanceof Error
+                    ? cause.message
+                    : "The work-item filter could not be saved.";
+            checkbox.checked = $azureDevOpsSettings.hideCompletedAndDone;
+        }
     }
 
     onDestroy(() => activeController?.abort());
@@ -95,12 +154,24 @@
 
 <Panel title="Assigned to me">
     <div slot="actions" class="panel-actions">
-        {#if isPreviewMode}
+        <label class="completed-filter">
+            <input
+                type="checkbox"
+                checked={$azureDevOpsSettings.hideCompletedAndDone}
+                on:change={updateCompletedFilter}
+            />
+            Hide completed and done
+        </label>
+        {#if useSampleData}
             <span
                 class="preview-badge"
                 title="These are sample work items; localhost does not query Azure DevOps."
             >
                 Sample data
+            </span>
+        {:else if isPreviewMode}
+            <span class="preview-badge" title="Connected to Azure DevOps using local environment credentials.">
+                Local API
             </span>
         {/if}
         <button
@@ -176,6 +247,20 @@
         font-size: 0.65rem;
         letter-spacing: 0.04em;
         text-transform: uppercase;
+    }
+
+    .completed-filter {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 0.68rem;
+        white-space: nowrap;
+    }
+
+    .completed-filter input {
+        margin: 0;
+        accent-color: #c6edf9;
     }
 
     .refresh-button {

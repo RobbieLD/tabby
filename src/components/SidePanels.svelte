@@ -1,18 +1,17 @@
 <script lang="ts">
-    import { azureDevOpsSettings } from "../stores/azure-devops";
     import AssignedWorkItems from "./AssignedWorkItems.svelte";
     import PanelRail from "./PanelRail.svelte";
+
+    export let enabled = false;
+    export let organization = "";
+    export let pat = "";
 </script>
 
-{#if
-    $azureDevOpsSettings.enabled &&
-    $azureDevOpsSettings.organization &&
-    $azureDevOpsSettings.pat
-}
+{#if enabled && organization && pat}
     <PanelRail side="left">
         <AssignedWorkItems
-            organization={$azureDevOpsSettings.organization}
-            pat={$azureDevOpsSettings.pat}
+            {organization}
+            {pat}
         />
     </PanelRail>
 {/if}

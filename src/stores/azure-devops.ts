@@ -7,6 +7,14 @@ export interface AzureDevOpsSettings {
     organization: string;
     pat: string;
     enabled: boolean;
+    hideCompletedAndDone: boolean;
+}
+
+interface StoredAzureDevOpsSettings {
+    organization: string;
+    pat: string;
+    enabled: boolean;
+    hideCompletedAndDone?: boolean;
 }
 
 const STORAGE_KEY = "azure-devops-settings";
@@ -14,9 +22,10 @@ const DEFAULT_SETTINGS: AzureDevOpsSettings = {
     organization: "",
     pat: "",
     enabled: true,
+    hideCompletedAndDone: true,
 };
 
-const isSettings = (value: unknown): value is AzureDevOpsSettings => {
+const isSettings = (value: unknown): value is StoredAzureDevOpsSettings => {
     if (typeof value !== "object" || value === null) {
         return false;
     }
@@ -25,11 +34,14 @@ const isSettings = (value: unknown): value is AzureDevOpsSettings => {
         organization?: unknown;
         pat?: unknown;
         enabled?: unknown;
+        hideCompletedAndDone?: unknown;
     };
     return (
         typeof candidate.organization === "string" &&
         typeof candidate.pat === "string" &&
-        typeof candidate.enabled === "boolean"
+        typeof candidate.enabled === "boolean" &&
+        (candidate.hideCompletedAndDone === undefined ||
+            typeof candidate.hideCompletedAndDone === "boolean")
     );
 };
 
@@ -49,6 +61,8 @@ const readSettings = (): AzureDevOpsSettings => {
             organization: normalizeOrganization(parsed.organization),
             pat: parsed.pat,
             enabled: parsed.enabled,
+            hideCompletedAndDone:
+                parsed.hideCompletedAndDone ?? DEFAULT_SETTINGS.hideCompletedAndDone,
         };
     } catch (error) {
         console.error("Azure DevOps settings could not be loaded.", error);
@@ -65,6 +79,7 @@ export const azureDevOpsSettings = {
             organization: normalizeOrganization(settings.organization),
             pat: settings.pat.trim(),
             enabled: settings.enabled,
+            hideCompletedAndDone: settings.hideCompletedAndDone,
         };
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextSettings));
         set(nextSettings);
