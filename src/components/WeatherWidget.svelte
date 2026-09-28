@@ -198,7 +198,7 @@
         <div class="weather-copy">
             <span class="weather-location">Current weather</span>
             <button class="weather-setup" type="button" on:click={openSettings}>
-                Set a location in Settings
+                Use browser location in Settings
             </button>
         </div>
     {/if}

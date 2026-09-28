@@ -1,14 +1,5 @@
 import type { CurrentWeather, WeatherLocation } from "../models/weather";
 
-interface GeocodingResponse {
-    results?: Array<{
-        name?: string;
-        country?: string;
-        latitude?: number;
-        longitude?: number;
-    }>;
-}
-
 interface ForecastResponse {
     current?: {
         temperature_2m?: number;
@@ -18,7 +9,10 @@ interface ForecastResponse {
     };
 }
 
-const readResponse = async (response: Response, serviceName: string): Promise<unknown> => {
+const readResponse = async (
+    response: Response,
+    serviceName: string
+): Promise<unknown> => {
     if (!response.ok) {
         throw new Error(`${serviceName} request failed with HTTP ${response.status}.`);
     }
@@ -26,41 +20,66 @@ const readResponse = async (response: Response, serviceName: string): Promise<un
     return response.json() as Promise<unknown>;
 };
 
-export const findWeatherLocation = async (
-    search: string,
-    signal?: AbortSignal
-): Promise<WeatherLocation> => {
-    const query = search.trim();
-    if (query.length < 2) {
-        throw new Error("Enter at least two characters for the weather location.");
-    }
+export const getBrowserWeatherLocation = (): Promise<WeatherLocation> =>
+    new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error("This browser does not provide location access."));
+            return;
+        }
 
-    const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
-    url.searchParams.set("name", query);
-    url.searchParams.set("count", "1");
-    url.searchParams.set("language", "en");
-    url.searchParams.set("format", "json");
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                if (
+                    !Number.isFinite(latitude) ||
+                    latitude < -90 ||
+                    latitude > 90 ||
+                    !Number.isFinite(longitude) ||
+                    longitude < -180 ||
+                    longitude > 180
+                ) {
+                    reject(new Error("The browser returned invalid location coordinates."));
+                    return;
+                }
 
-    const response = await fetch(url, { signal, cache: "no-store" });
-    const result = (await readResponse(response, "Weather location search")) as GeocodingResponse;
-    const match = result.results?.[0];
-    if (
-        !match ||
-        typeof match.name !== "string" ||
-        typeof match.latitude !== "number" ||
-        typeof match.longitude !== "number"
-    ) {
-        throw new Error(
-            `No weather location matched "${query}". Try adding a country, such as "Paris, France".`
+                resolve({
+                    name: "My location",
+                    latitude,
+                    longitude,
+                    source: "browser",
+                });
+            },
+            (error) => {
+                if (error.code === error.PERMISSION_DENIED) {
+                    reject(
+                        new Error(
+                            "Location access was denied. Allow location access for Tabby in your browser settings, then try again."
+                        )
+                    );
+                    return;
+                }
+                if (error.code === error.POSITION_UNAVAILABLE) {
+                    reject(
+                        new Error(
+                            "The browser could not determine your location. Check that location services are available, then try again."
+                        )
+                    );
+                    return;
+                }
+
+                reject(
+                    new Error(
+                        "The browser took too long to determine your location. Try again."
+                    )
+                );
+            },
+            {
+                enableHighAccuracy: false,
+                maximumAge: 5 * 60 * 1000,
+                timeout: 20 * 1000,
+            }
         );
-    }
-
-    return {
-        name: match.country ? `${match.name}, ${match.country}` : match.name,
-        latitude: match.latitude,
-        longitude: match.longitude,
-    };
-};
+    });
 
 export const getCurrentWeather = async (
     location: WeatherLocation,

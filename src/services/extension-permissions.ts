@@ -1,21 +1,22 @@
 import { isLocalPreview } from "../utils/environment";
 
-interface HostPermission {
-    origins: string[];
+interface ExtensionPermission {
+    origins?: string[];
+    permissions?: string[];
 }
 
 interface FirefoxPermissions {
-    request(permission: HostPermission): Promise<boolean>;
-    remove(permission: HostPermission): Promise<boolean>;
+    request(permission: ExtensionPermission): Promise<boolean>;
+    remove(permission: ExtensionPermission): Promise<boolean>;
 }
 
 interface ChromePermissions {
     request(
-        permission: HostPermission,
+        permission: ExtensionPermission,
         callback: (granted: boolean) => void
     ): void;
     remove(
-        permission: HostPermission,
+        permission: ExtensionPermission,
         callback: (removed: boolean) => void
     ): void;
 }
@@ -32,7 +33,9 @@ interface ExtensionWindow extends Window {
     chrome?: ChromeExtensionApi;
 }
 
-const requestHostAccess = (permission: HostPermission): Promise<boolean> => {
+const requestExtensionPermission = (
+    permission: ExtensionPermission
+): Promise<boolean> => {
     const extensionWindow = window as ExtensionWindow;
     if (extensionWindow.browser?.permissions) {
         return extensionWindow.browser.permissions.request(permission);
@@ -64,7 +67,9 @@ const requestHostAccess = (permission: HostPermission): Promise<boolean> => {
     });
 };
 
-const removeHostAccess = (permission: HostPermission): Promise<boolean> => {
+const removeExtensionPermission = (
+    permission: ExtensionPermission
+): Promise<boolean> => {
     const extensionWindow = window as ExtensionWindow;
     if (extensionWindow.browser?.permissions) {
         return extensionWindow.browser.permissions.remove(permission);
@@ -92,30 +97,28 @@ const removeHostAccess = (permission: HostPermission): Promise<boolean> => {
 };
 
 export const requestAzureDevOpsAccess = (): Promise<boolean> =>
-    requestHostAccess({ origins: ["https://dev.azure.com/*"] });
+    requestExtensionPermission({ origins: ["https://dev.azure.com/*"] });
 
 export const removeAzureDevOpsAccess = (): Promise<boolean> =>
-    removeHostAccess({ origins: ["https://dev.azure.com/*"] });
+    removeExtensionPermission({ origins: ["https://dev.azure.com/*"] });
 
-const OPEN_METEO_PERMISSION: HostPermission = {
-    origins: [
-        "https://api.open-meteo.com/*",
-        "https://geocoding-api.open-meteo.com/*",
-    ],
+const WEATHER_PERMISSION: ExtensionPermission = {
+    origins: ["https://api.open-meteo.com/*"],
+    permissions: ["geolocation"],
 };
 
 export const requestWeatherAccess = (): Promise<boolean> =>
-    requestHostAccess(OPEN_METEO_PERMISSION);
+    requestExtensionPermission(WEATHER_PERMISSION);
 
 export const removeWeatherAccess = (): Promise<boolean> =>
-    removeHostAccess(OPEN_METEO_PERMISSION);
+    removeExtensionPermission(WEATHER_PERMISSION);
 
-const UNSPLASH_PERMISSION: HostPermission = {
+const UNSPLASH_PERMISSION: ExtensionPermission = {
     origins: ["https://api.unsplash.com/*"],
 };
 
 export const requestUnsplashAccess = (): Promise<boolean> =>
-    requestHostAccess(UNSPLASH_PERMISSION);
+    requestExtensionPermission(UNSPLASH_PERMISSION);
 
 export const removeUnsplashAccess = (): Promise<boolean> =>
-    removeHostAccess(UNSPLASH_PERMISSION);
+    removeExtensionPermission(UNSPLASH_PERMISSION);

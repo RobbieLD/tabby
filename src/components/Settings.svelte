@@ -4,7 +4,7 @@
     import { azureDevOpsSettings } from "../stores/azure-devops";
     import { weatherLocation } from "../stores/weather";
     import { normalizeOrganization } from "../services/azure-devops.service";
-    import { findWeatherLocation } from "../services/weather.service";
+    import { getBrowserWeatherLocation } from "../services/weather.service";
     import { isLocalPreview } from "../utils/environment";
     import {
         removeAzureDevOpsAccess,
@@ -25,7 +25,6 @@
     let organization = $azureDevOpsSettings.organization;
     let personalAccessToken = $azureDevOpsSettings.pat;
     let showAssignedPanel = $azureDevOpsSettings.enabled;
-    let weatherCity = $weatherLocation?.name || "";
     let shortcutMessage = "";
     let shortcutMessageIsError = false;
     let backgroundMessage = "";
@@ -202,16 +201,12 @@
         let requestedAccess = false;
 
         try {
-            const city = weatherCity.trim();
-            if (city.length < 2) {
-                throw new Error("Enter a city or town name.");
-            }
-
             if (isLocalPreview()) {
                 weatherLocation.save({
-                    name: city,
+                    name: "Sample location",
                     latitude: 47.6062,
                     longitude: -122.3321,
+                    source: "preview",
                 });
                 weatherMessage = "Preview location saved. Sample weather is shown locally.";
                 return;
@@ -225,10 +220,9 @@
             }
             requestedAccess = true;
 
-            const location = await findWeatherLocation(city);
+            const location = await getBrowserWeatherLocation();
             weatherLocation.save(location);
-            weatherCity = location.name;
-            weatherMessage = `Weather is now set to ${location.name}.`;
+            weatherMessage = "Browser location saved for current weather.";
         } catch (error) {
             weatherMessage = messageFromError(error);
             if (requestedAccess && !previousLocation) {
@@ -247,7 +241,6 @@
     async function clearWeatherLocation(): Promise<void> {
         try {
             weatherLocation.clear();
-            weatherCity = "";
         } catch (error) {
             weatherMessage = messageFromError(error);
             weatherMessageIsError = true;
@@ -515,40 +508,40 @@
         <section class="settings-section" aria-labelledby="weather-heading">
             <h2 id="weather-heading">Weather</h2>
             <p class="section-description">
-                Set a city to show current weather in the top-right corner. Temperatures
-                are in Celsius and wind speeds are in km/h.
+                Use your browser's current location to show local weather in the top-right
+                corner. Temperatures are in Celsius and wind speeds are in km/h.
             </p>
-            <form on:submit|preventDefault={saveWeatherLocation}>
-                <label class="field">
-                    City or town
-                    <input
-                        type="text"
-                        bind:value={weatherCity}
-                        placeholder="For example, London, United Kingdom"
-                        maxlength="100"
-                        autocomplete="off"
-                    />
-                </label>
+            <p class="field-hint">
+                When you choose this, your browser asks whether Tabby can access your
+                location. Coordinates are stored in this browser and sent to Open-Meteo
+                for weather only; Tabby does not request location in the background.
+            </p>
+            <div class="button-row">
+                <button
+                    class="button button-primary"
+                    type="button"
+                    on:click={saveWeatherLocation}
+                >
+                    {$weatherLocation ? "Update browser location" : "Use browser location"}
+                </button>
+                <button
+                    class="button"
+                    type="button"
+                    on:click={clearWeatherLocation}
+                    disabled={!$weatherLocation}
+                >
+                    Clear location
+                </button>
+            </div>
+            {#if $weatherLocation}
                 <p class="field-hint">
-                    Saving requests access to Open-Meteo. Your city is sent to find its
-                    coordinates, then those coordinates are used to fetch weather. The
-                    location is stored in this browser; no GPS permission or API key is
-                    required.
+                    {#if $weatherLocation.source === "preview"}
+                        Preview location is configured.
+                    {:else}
+                        Browser location is saved for weather.
+                    {/if}
                 </p>
-                <div class="button-row">
-                    <button class="button button-primary" type="submit">
-                        Save weather location
-                    </button>
-                    <button
-                        class="button"
-                        type="button"
-                        on:click={clearWeatherLocation}
-                        disabled={!$weatherLocation}
-                    >
-                        Clear location
-                    </button>
-                </div>
-            </form>
+            {/if}
             {#if weatherMessage}
                 <p
                     class:error={weatherMessageIsError}
