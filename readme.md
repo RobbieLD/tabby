@@ -7,6 +7,7 @@ Tabby is a customizable new-tab page for Firefox and Chrome, built because I cou
 - Stores uploaded shortcut icons locally in browser storage.
 - Finds site favicons automatically when adding a shortcut; white favicon backdrops blend into the page and a local image can be uploaded instead.
 - Uses Unsplash's dark-dominant color filter for optional photo backgrounds and credits the photographer.
+- Uses a dark default background and a first-run welcome panel with a shortcut to Settings.
 - Shows current weather in the top-right corner when a location is configured.
 - Add and remove shortcuts for apps and websites.
 - Background URLs are cached for an hour to avoid excess API usage.
@@ -31,6 +32,8 @@ __Chrome__: Download the [latest Chromium release zip](https://github.com/Robbie
 
 ### Stable
 The stable Firefox release is available from the [Firefox Add-ons page](https://addons.mozilla.org/en-US/firefox/addon/tabby/). A Chrome Web Store listing is not available yet; use the Chromium release archive above.
+
+Pushing a numeric `X.Y.Z` tag submits the Firefox release build and its reproducible source archive to AMO's **listed** channel when the repository has `FIREFOX_JWT_ISSUER` and `FIREFOX_JWT_SECRET` configured under **Settings → Secrets and variables → Actions**. Generate the API key (issuer) and secret from the [AMO API credentials page](https://addons.mozilla.org/en-US/developers/addon/api/key/); store the key as `FIREFOX_JWT_ISSUER` and the secret as `FIREFOX_JWT_SECRET`. Mozilla still reviews listed submissions; the workflow submits the update automatically but does not bypass review, so it appears on the public listing after approval. If the secrets are absent, the workflow warns and skips AMO submission while still creating the GitHub release.
 
 ## Usage
 To use Unsplash backgrounds, add an API access key from the [Unsplash Dev Portal](https://unsplash.com/developers) in Settings. Backgrounds are optional; saving the key requests access to Unsplash. Tabby uses Unsplash's documented black-dominant landscape search filter to prefer darker photos and displays photographer attribution.

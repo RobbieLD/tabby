@@ -1,6 +1,7 @@
 import UnsplashService from "../services/unsplash.service";
 import { writable } from "svelte/store";
 import type UnsplashResponse from "../models/unsplash-response";
+import { hasAuthenticationInfoAccess } from "../services/extension-permissions";
 
 const setCache = (response: UnsplashResponse) => {
     window.localStorage.setItem("url", response.url);
@@ -97,6 +98,14 @@ const createBackground = () => {
                 !cachedPhotographerUrl ||
                 new Date().getHours().toString() !== hour
             ) {
+                if (!(await hasAuthenticationInfoAccess())) {
+                    update((current) => ({
+                        ...current,
+                        error:
+                            "Re-save your Unsplash key in Settings to allow background requests.",
+                    }));
+                    return;
+                }
                 await load(key);
                 return;
             }

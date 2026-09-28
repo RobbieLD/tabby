@@ -5,6 +5,7 @@
     } from "../services/azure-devops.service";
     import type WorkItem from "../models/work-item";
     import { isLocalPreview } from "../utils/environment";
+    import { hasAuthenticationInfoAccess } from "../services/extension-permissions";
     import Panel from "./Panel.svelte";
 
     export let organization: string;
@@ -31,6 +32,15 @@
         items = [];
 
         try {
+            if (
+                !isPreviewMode &&
+                !(await hasAuthenticationInfoAccess())
+            ) {
+                throw new Error(
+                    "Save your Azure DevOps settings again to approve sending your PAT to Azure DevOps."
+                );
+            }
+
             items = isPreviewMode
                 ? [
                       {

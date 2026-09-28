@@ -2,6 +2,7 @@
     import { onDestroy } from "svelte";
     import type { CurrentWeather, WeatherLocation } from "../models/weather";
     import { describeWeather, getCurrentWeather } from "../services/weather.service";
+    import { hasLocationInfoAccess } from "../services/extension-permissions";
     import { isLocalPreview } from "../utils/environment";
     import { WEATHER_CACHE_KEY, weatherLocation } from "../stores/weather";
 
@@ -112,6 +113,12 @@
                     current = cachedWeather;
                     return;
                 }
+            }
+
+            if (!(await hasLocationInfoAccess())) {
+                throw new Error(
+                    "Location data consent is disabled. Re-enable weather location in Settings before requesting weather."
+                );
             }
 
             const weather = await getCurrentWeather(location, controller.signal);

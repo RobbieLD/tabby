@@ -7,7 +7,15 @@
     "browser_specific_settings": {
         "gecko": {
             "id": "rob@robdavis.dev",
-            "update_url": "https://github.com/RobbieLD/tabby/releases/latest/download/update-firefox-dev.json"
+            "update_url": "https://github.com/RobbieLD/tabby/releases/latest/download/update-firefox-dev.json",
+            "data_collection_permissions": {
+                "required": ["none"],
+                "optional": [
+                    "authenticationInfo",
+                    "locationInfo",
+                    "websiteActivity"
+                ]
+            }
         }
     },
     "chrome_url_overrides": {

@@ -72,11 +72,14 @@ jobs:
         run: yarn typecheck
 
       - name: Package extension
+        id: package_extension
         if: startsWith(github.ref, 'refs/tags/')
         env:
           BROWSER: ${{ matrix.browser }}
           BUILD: ${{ matrix.build }}
           EXTENSION: ${{ matrix.extension }}
+          FIREFOX_JWT_ISSUER: ${{ matrix.browser == 'firefox' && matrix.build == 'release' && secrets.FIREFOX_JWT_ISSUER || '' }}
+          FIREFOX_JWT_SECRET: ${{ matrix.browser == 'firefox' && matrix.build == 'release' && secrets.FIREFOX_JWT_SECRET || '' }}
         run: |
           set -euo pipefail
           cp "targets/${BROWSER}/${BUILD}/manifest.json" public/manifest.json
@@ -87,6 +90,40 @@ jobs:
           if [[ -f "$update_manifest" ]]; then
             cp "$update_manifest" release-assets/
           fi
+
+          if [[ "$BROWSER" == "firefox" && "$BUILD" == "release" ]]; then
+            if [[ -z "${FIREFOX_JWT_ISSUER:-}" || -z "${FIREFOX_JWT_SECRET:-}" ]]; then
+              echo "::warning::AMO submission skipped. Add FIREFOX_JWT_ISSUER and FIREFOX_JWT_SECRET to repository Actions secrets."
+              {
+                echo "### Firefox AMO submission skipped"
+                echo "Configure the repository Actions secrets \`FIREFOX_JWT_ISSUER\` and \`FIREFOX_JWT_SECRET\` to enable automatic submission."
+              } >> "$GITHUB_STEP_SUMMARY"
+              echo "amo_configured=false" >> "$GITHUB_OUTPUT"
+            else
+              source_dir="$RUNNER_TEMP/tabby-source"
+              mkdir -p "$source_dir/public" "$source_dir/targets/firefox"
+              cp -R src package.json yarn.lock rollup.config.js tsconfig.json readme.md "$source_dir/"
+              cp public/index.html "$source_dir/public/"
+              cp -R public/images "$source_dir/public/"
+              cp -R targets/firefox/release "$source_dir/targets/firefox/release"
+              cp targets/firefox/release/manifest.json "$source_dir/public/manifest.json"
+              (cd "$source_dir" && zip -q -r "$RUNNER_TEMP/tabby-source.zip" .)
+              echo "amo_configured=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Publish Firefox add-on to AMO
+        if: startsWith(github.ref, 'refs/tags/') && matrix.browser == 'firefox' && matrix.build == 'release' && steps.package_extension.outputs.amo_configured == 'true'
+        uses: wdzeng/firefox-addon@3184ee491b500e080885e046051366a4228c6e5d # v1.2.1
+        with:
+          addon-guid: "{b95dddd7-a444-4cac-b348-ca6405b9409f}"
+          xpi-path: release-assets/tabby-firefox-release.xpi
+          source-file-path: ${{ runner.temp }}/tabby-source.zip
+          self-hosted: "false"
+          jwt-issuer: ${{ secrets.FIREFOX_JWT_ISSUER }}
+          jwt-secret: ${{ secrets.FIREFOX_JWT_SECRET }}
+          license: MPL-2.0
+          approval-notes: "Submitted automatically from GitHub release ${{ github.ref_name }}."
 
       - name: Upload release assets
         if: startsWith(github.ref, 'refs/tags/')

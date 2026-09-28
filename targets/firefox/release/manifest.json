@@ -4,6 +4,19 @@
     "short_name": "Tabby",
     "version": "__VERSION__",
     "description": "A simple new tab extensions",
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "{b95dddd7-a444-4cac-b348-ca6405b9409f}",
+            "data_collection_permissions": {
+                "required": ["none"],
+                "optional": [
+                    "authenticationInfo",
+                    "locationInfo",
+                    "websiteActivity"
+                ]
+            }
+        }
+    },
     "chrome_url_overrides": {
       "newtab": "index.html"
     },

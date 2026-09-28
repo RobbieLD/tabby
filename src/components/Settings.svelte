@@ -8,11 +8,14 @@
     import { isLocalPreview } from "../utils/environment";
     import {
         removeAzureDevOpsAccess,
+        removeAuthenticationInfoAccess,
         removeWeatherAccess,
         removeUnsplashAccess,
+        requestWebsiteActivityAccess,
         requestAzureDevOpsAccess,
         requestWeatherAccess,
         requestUnsplashAccess,
+        websiteActivityAccess,
     } from "../services/extension-permissions";
 
     let showSettingsPanel = false;
@@ -31,6 +34,8 @@
     let backgroundMessageIsError = false;
     let adoMessage = "";
     let adoMessageIsError = false;
+    let iconPermissionMessage = "";
+    let iconPermissionMessageIsError = false;
     let weatherMessage = "";
     let weatherMessageIsError = false;
 
@@ -56,6 +61,15 @@
         shortcutMessageIsError = false;
 
         try {
+            if (!files?.[0]) {
+                const granted = await requestWebsiteActivityAccess();
+                if (!granted) {
+                    throw new Error(
+                        "Automatic favicon lookup shares the website origin with Google. Grant permission or upload a local icon instead."
+                    );
+                }
+            }
+
             await icons.add(newIconTitle, newIconUrl, files?.[0]);
             shortcutMessage = `${newIconTitle.trim()} was added to your shortcuts.`;
             newIconTitle = "";
@@ -64,6 +78,24 @@
         } catch (error) {
             shortcutMessage = messageFromError(error);
             shortcutMessageIsError = true;
+        }
+    }
+
+    async function enableAutomaticFavicons(): Promise<void> {
+        iconPermissionMessage = "";
+        iconPermissionMessageIsError = false;
+
+        try {
+            const granted = await requestWebsiteActivityAccess();
+            if (!granted) {
+                throw new Error(
+                    "Automatic favicons share each website origin with Google. Upload a local icon if you prefer not to allow that."
+                );
+            }
+            iconPermissionMessage = "Automatic favicon lookup is enabled.";
+        } catch (error) {
+            iconPermissionMessage = messageFromError(error);
+            iconPermissionMessageIsError = true;
         }
     }
 
@@ -145,6 +177,9 @@
             ) {
                 try {
                     await removeAzureDevOpsAccess();
+                    if (!window.localStorage.getItem("unsplash")) {
+                        await removeAuthenticationInfoAccess();
+                    }
                 } catch (error) {
                     adoMessage =
                         "Settings were saved, but Azure DevOps access could not be revoked: " +
@@ -182,9 +217,14 @@
 
         try {
             const permissionRemoved = await removeAzureDevOpsAccess();
-            adoMessage = permissionRemoved
-                ? "Azure DevOps settings were removed and site access was revoked."
-                : "Azure DevOps settings and the saved PAT were removed.";
+            let authenticationRemoved = false;
+            if (!window.localStorage.getItem("unsplash")) {
+                authenticationRemoved = await removeAuthenticationInfoAccess();
+            }
+            adoMessage =
+                permissionRemoved || authenticationRemoved
+                    ? "Azure DevOps settings were removed and access was revoked."
+                    : "Azure DevOps settings and the saved PAT were removed.";
             adoMessageIsError = false;
         } catch (error) {
             adoMessage =
@@ -282,9 +322,16 @@
             await background.configure("");
             try {
                 await removeUnsplashAccess();
+                const hasEnabledAzureDevOps =
+                    $azureDevOpsSettings.enabled &&
+                    Boolean($azureDevOpsSettings.organization) &&
+                    Boolean($azureDevOpsSettings.pat);
+                if (!hasEnabledAzureDevOps) {
+                    await removeAuthenticationInfoAccess();
+                }
             } catch (error) {
                 backgroundMessage =
-                    "Backgrounds were turned off, but Unsplash access could not be revoked: " +
+                    "Backgrounds were turned off, but Unsplash access or authentication consent could not be revoked: " +
                     messageFromError(error);
                 backgroundMessageIsError = true;
                 return;
@@ -415,9 +462,31 @@
                     <input type="file" bind:files accept="image/*" />
                 </label>
                 <p class="field-hint">
-                    Automatic favicons are provided by Google. A local image is saved in
-                    this browser and used instead.
+                    Automatic favicons are provided by Google and share the website
+                    origin for lookup. Use a local image to avoid that. Firefox asks for
+                    consent before showing online icons.
                 </p>
+                <div class="button-row">
+                    <button
+                        class="button"
+                        type="button"
+                        on:click={enableAutomaticFavicons}
+                        disabled={$websiteActivityAccess}
+                    >
+                        {$websiteActivityAccess
+                            ? "Automatic favicons enabled"
+                            : "Allow automatic favicons"}
+                    </button>
+                </div>
+                {#if iconPermissionMessage}
+                    <p
+                        class:error={iconPermissionMessageIsError}
+                        class="form-message"
+                        aria-live="polite"
+                    >
+                        {iconPermissionMessage}
+                    </p>
+                {/if}
                 <button class="button button-primary" type="submit">
                     Add shortcut
                 </button>

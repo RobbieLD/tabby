@@ -1,27 +1,51 @@
 <script lang="ts">
+    import { onMount } from "svelte";
     import Clock from "./components/Clock.svelte";
     import SidePanels from "./components/SidePanels.svelte";
     import Settings from "./components/Settings.svelte";
     import WeatherWidget from "./components/WeatherWidget.svelte";
+    import WelcomePanel from "./components/WelcomePanel.svelte";
     import { background } from "./stores/background";
     import { icons } from "./stores/icons";
     import { azureDevOpsSettings } from "./stores/azure-devops";
+    import { weatherLocation } from "./stores/weather";
+    import {
+        hasWebsiteActivityAccess,
+        websiteActivityAccess,
+    } from "./services/extension-permissions";
 
     background.init().catch((error: unknown) => {
         console.error("Unable to load the Unsplash background.", error);
+    });
+
+    onMount(() => {
+        hasWebsiteActivityAccess()
+            .then((granted) => websiteActivityAccess.set(granted))
+            .catch((error: unknown) => {
+                console.error("Unable to check remote icon data consent.", error);
+                websiteActivityAccess.set(false);
+            });
     });
 
     $: showLeftPanels =
         $azureDevOpsSettings.enabled &&
         Boolean($azureDevOpsSettings.organization) &&
         Boolean($azureDevOpsSettings.pat);
+    $: showWelcome =
+        $icons.length === 0 &&
+        !showLeftPanels &&
+        !$weatherLocation &&
+        !$background.url;
 
     window.localStorage.removeItem("outlook-calendar-settings");
+
+    const isRemoteIcon = (icon: string): boolean => /^https?:\/\//i.test(icon);
 </script>
 
 <div
     class="main"
-    style="background-image:{$background.url}"
+    style:background-image={$background.url ||
+        "linear-gradient(135deg, #111b27 0%, #1d3444 55%, #253b49 100%)"}
 >
     <header class="header">
         <nav class="content" aria-label="Shortcuts">
@@ -33,7 +57,13 @@
                     title={icon.title}
                     aria-label={icon.title}
                 >
-                    <img src={icon.icon} alt={icon.title} class="icon" />
+                    {#if !isRemoteIcon(icon.icon) || $websiteActivityAccess}
+                        <img src={icon.icon} alt={icon.title} class="icon" />
+                    {:else}
+                        <span class="icon icon-placeholder" aria-hidden="true">
+                            {icon.title.charAt(0).toUpperCase()}
+                        </span>
+                    {/if}
                 </a>
             {/each}
         </nav>
@@ -41,8 +71,12 @@
     <div
         class="workspace"
         class:has-left-panel={showLeftPanels}
+        class:show-welcome={showWelcome}
     >
         <SidePanels />
+        {#if showWelcome}
+            <WelcomePanel />
+        {/if}
         <WeatherWidget />
         <Clock />
     </div>
@@ -68,6 +102,7 @@
         grid-template-rows: auto minmax(0, 1fr) auto;
         height: 100vh;
         overflow: hidden;
+        background-color: #17232e;
         background-size: cover;
     }
 
@@ -109,6 +144,13 @@
         grid-template-columns: max-content minmax(0, 1fr) auto;
     }
 
+    .workspace.show-welcome {
+        grid-template-areas:
+            ". welcome weather"
+            ". welcome clock";
+        grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+
     .icon {
         max-width: 2em;
         filter: grayscale(100%);
@@ -122,10 +164,32 @@
         transform: scale(2) translateY(0.5em);
     }
 
+    .icon-placeholder {
+        display: inline-grid;
+        place-items: center;
+        width: 2em;
+        height: 2em;
+        border-radius: 0.35em;
+        color: white;
+        background: rgba(0, 0, 0, 0.22);
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
     @media (max-width: 820px) {
         .workspace.has-left-panel {
             grid-template-areas:
                 "sidebar"
+                "weather"
+                "clock";
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: auto auto minmax(0, 1fr);
+            overflow-y: auto;
+        }
+
+        .workspace.show-welcome {
+            grid-template-areas:
+                "welcome"
                 "weather"
                 "clock";
             grid-template-columns: minmax(0, 1fr);
