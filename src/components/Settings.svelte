@@ -4,7 +4,10 @@
     import { azureDevOpsSettings } from "../stores/azure-devops";
     import { weatherLocation } from "../stores/weather";
     import { normalizeOrganization } from "../services/azure-devops.service";
-    import { getBrowserWeatherLocation } from "../services/weather.service";
+    import {
+        getBrowserWeatherLocation,
+        resolveWeatherPlaceName,
+    } from "../services/weather.service";
     import { isLocalPreview } from "../utils/environment";
     import {
         removeAzureDevOpsAccess,
@@ -260,9 +263,19 @@
             }
             requestedAccess = true;
 
-            const location = await getBrowserWeatherLocation();
+            let location = await getBrowserWeatherLocation();
+            let placeNameWarning = "";
+            try {
+                location = await resolveWeatherPlaceName(location);
+            } catch (error) {
+                placeNameWarning =
+                    "Place name lookup failed; weather will show as My location. " +
+                    messageFromError(error);
+            }
             weatherLocation.save(location);
-            weatherMessage = "Browser location saved for current weather.";
+            weatherMessage =
+                placeNameWarning || `Weather location saved as ${location.name}.`;
+            weatherMessageIsError = Boolean(placeNameWarning);
         } catch (error) {
             weatherMessage = messageFromError(error);
             if (requestedAccess && !previousLocation) {
@@ -582,8 +595,10 @@
             </p>
             <p class="field-hint">
                 When you choose this, your browser asks whether Tabby can access your
-                location. Coordinates are stored in this browser and sent to Open-Meteo
-                for weather only; Tabby does not request location in the background.
+                location. Coordinates are stored in this browser and sent directly to
+                Open-Meteo for weather and BigDataCloud to find a nearby place name. Both
+                services also receive your network IP address. Tabby does not request
+                location in the background.
             </p>
             <div class="button-row">
                 <button

@@ -160,7 +160,10 @@ export const hasLocationInfoAccess = async (): Promise<boolean> => {
 };
 
 const WEATHER_PERMISSION: ExtensionPermission = {
-    origins: ["https://api.open-meteo.com/*"],
+    origins: [
+        "https://api.open-meteo.com/*",
+        "https://api.bigdatacloud.net/*",
+    ],
     permissions: ["geolocation"],
     data_collection: ["locationInfo"],
 };

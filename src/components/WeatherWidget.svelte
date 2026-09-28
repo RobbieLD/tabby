@@ -218,6 +218,16 @@
     >
         Open-Meteo
     </a>
+    <span class="attribution-separator" aria-hidden="true">·</span>
+    <a
+        class="weather-attribution"
+        href="https://www.bigdatacloud.com/geocoding-apis/free-reverse-geocode-to-city-api"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Place name data by BigDataCloud"
+    >
+        BigDataCloud
+    </a>
 </aside>
 
 <style>
@@ -332,5 +342,10 @@
         color: rgba(255, 255, 255, 0.6);
         font-size: 0.58rem;
         text-decoration: none;
+    }
+
+    .attribution-separator {
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 0.58rem;
     }
 </style>

@@ -28,6 +28,7 @@
     "optional_host_permissions": [
         "https://dev.azure.com/*",
         "https://api.open-meteo.com/*",
+        "https://api.bigdatacloud.net/*",
         "https://api.unsplash.com/*"
     ]
 }

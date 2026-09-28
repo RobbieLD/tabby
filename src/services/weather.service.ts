@@ -9,6 +9,13 @@ interface ForecastResponse {
     };
 }
 
+interface PlaceNameResponse {
+    city?: string | null;
+    locality?: string | null;
+    principalSubdivision?: string | null;
+    countryName?: string | null;
+}
+
 const readResponse = async (
     response: Response,
     serviceName: string
@@ -80,6 +87,31 @@ export const getBrowserWeatherLocation = (): Promise<WeatherLocation> =>
             }
         );
     });
+
+export const resolveWeatherPlaceName = async (
+    location: WeatherLocation,
+    signal?: AbortSignal
+): Promise<WeatherLocation> => {
+    const url = new URL(
+        "https://api.bigdatacloud.net/data/reverse-geocode-client"
+    );
+    url.searchParams.set("latitude", location.latitude.toString());
+    url.searchParams.set("longitude", location.longitude.toString());
+    url.searchParams.set("localityLanguage", "en");
+
+    const response = await fetch(url, { signal, cache: "no-store" });
+    const result = (await readResponse(response, "Place name lookup")) as PlaceNameResponse;
+    const placeName =
+        result.city?.trim() ||
+        result.locality?.trim() ||
+        result.principalSubdivision?.trim() ||
+        result.countryName?.trim();
+    if (!placeName) {
+        throw new Error("The place name service did not find a nearby city or locality.");
+    }
+
+    return { ...location, name: placeName };
+};
 
 export const getCurrentWeather = async (
     location: WeatherLocation,
