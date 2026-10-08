@@ -154,14 +154,6 @@
 
 <Panel title="Assigned to me">
     <div slot="actions" class="panel-actions">
-        <label class="completed-filter">
-            <input
-                type="checkbox"
-                checked={$azureDevOpsSettings.hideCompletedAndDone}
-                on:change={updateCompletedFilter}
-            />
-            Hide completed and done
-        </label>
         {#if useSampleData}
             <span
                 class="preview-badge"
@@ -229,6 +221,14 @@
             </p>
         {/if}
     {/if}
+    <label class="completed-filter">
+        Hide completed and done
+        <input
+            type="checkbox"
+            checked={$azureDevOpsSettings.hideCompletedAndDone}
+            on:change={updateCompletedFilter}
+        />
+    </label>
 </Panel>
 
 <style>
@@ -256,6 +256,8 @@
         color: rgba(255, 255, 255, 0.82);
         font-size: 0.68rem;
         white-space: nowrap;
+        margin-top: 1em;
+        justify-self: end;
     }
 
     .completed-filter input {
