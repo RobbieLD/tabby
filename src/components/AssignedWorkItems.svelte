@@ -252,12 +252,14 @@
     .completed-filter {
         display: flex;
         align-items: center;
+        justify-content: flex-end;
         gap: 0.3rem;
+        width: 100%;
+        box-sizing: border-box;
         color: rgba(255, 255, 255, 0.82);
         font-size: 0.68rem;
         white-space: nowrap;
         margin-top: 1em;
-        justify-self: end;
     }
 
     .completed-filter input {

@@ -4,6 +4,7 @@
     import { azureDevOpsSettings } from "../stores/azure-devops";
     import { weatherLocation } from "../stores/weather";
     import { normalizeOrganization } from "../services/azure-devops.service";
+    import { UNSPLASH_COLOR_OPTIONS } from "../services/unsplash.service";
     import {
         getBrowserWeatherLocation,
         resolveWeatherPlaceName,
@@ -32,6 +33,8 @@
         localPreviewConfig.unsplashAccessKey ||
         window.localStorage.getItem("unsplash") ||
         "";
+    let unsplashSearchTerms = background.getSearchTerms();
+    let unsplashColor = background.getColor();
     let organization = $azureDevOpsSettings.organization;
     let personalAccessToken = $azureDevOpsSettings.pat;
     let showAssignedPanel = $azureDevOpsSettings.enabled;
@@ -360,11 +363,16 @@
                         "Unsplash access was not granted, so the background key was not saved."
                     );
                 }
+                unsplashSearchTerms = background.saveSearchTerms(unsplashSearchTerms);
+                unsplashColor = background.saveColor(unsplashColor);
                 await background.configure(key);
-                backgroundMessage = "Background key saved. Darker photos are preferred.";
+                backgroundMessage =
+                    "Background key and search settings saved.";
                 return;
             }
 
+            unsplashSearchTerms = background.saveSearchTerms(unsplashSearchTerms);
+            unsplashColor = background.saveColor(unsplashColor);
             await background.configure("");
             try {
                 await removeUnsplashAccess();
@@ -390,6 +398,21 @@
         }
     }
 
+    function saveBackgroundSearchSettings(): void {
+        backgroundMessage = "";
+        backgroundMessageIsError = false;
+
+        try {
+            unsplashSearchTerms = background.saveSearchTerms(unsplashSearchTerms);
+            unsplashColor = background.saveColor(unsplashColor);
+            backgroundMessage =
+                "Search settings saved. Refresh the photo to apply them.";
+        } catch (error) {
+            backgroundMessage = messageFromError(error);
+            backgroundMessageIsError = true;
+        }
+    }
+
     async function refreshBackground(): Promise<void> {
         backgroundMessage = "";
         backgroundMessageIsError = false;
@@ -404,6 +427,8 @@
                     "Unsplash access was not granted, so the background could not be refreshed."
                 );
             }
+            unsplashSearchTerms = background.saveSearchTerms(unsplashSearchTerms);
+            unsplashColor = background.saveColor(unsplashColor);
             await background.refresh();
             backgroundMessage = "Background refreshed.";
         } catch (error) {
@@ -514,6 +539,9 @@
                     consent before showing online icons.
                 </p>
                 <div class="button-row">
+                    <button class="button button-primary" type="submit">
+                        Add shortcut
+                    </button>
                     <button
                         class="button"
                         type="button"
@@ -534,9 +562,6 @@
                         {iconPermissionMessage}
                     </p>
                 {/if}
-                <button class="button button-primary" type="submit">
-                    Add shortcut
-                </button>
             </form>
 
             <div class="manage-shortcuts">
@@ -589,7 +614,7 @@
                 </div>
             </div>
 
-            <div class="button-row">
+            <div class="button-row shortcut-file-actions">
                 <button class="button" type="button" on:click={exportIcons}>
                     Export shortcuts
                 </button>
@@ -617,8 +642,9 @@
             <h2 id="background-heading">Background</h2>
             <p class="section-description">
                 Use your Unsplash access key for daily landscape backgrounds. Saving
-                the key requests Unsplash API access. Tabby prefers photos with a black
-                dominant color when available; leave this blank to turn backgrounds off.
+                the key requests Unsplash API access. Tabby requests landscape photos
+                using your selected color filter (black by default); leave the access
+                key blank to turn backgrounds off.
             </p>
             <label class="field">
                 Unsplash access key
@@ -629,9 +655,33 @@
                     placeholder="Paste your Unsplash access key"
                 />
             </label>
+            <label class="field">
+                Unsplash search terms
+                <input
+                    type="text"
+                    bind:value={unsplashSearchTerms}
+                    autocomplete="off"
+                    placeholder="nature"
+                />
+            </label>
+            <label class="field">
+                Unsplash color filter
+                <select bind:value={unsplashColor}>
+                    {#each UNSPLASH_COLOR_OPTIONS as option}
+                        <option value={option.value}>{option.label}</option>
+                    {/each}
+                </select>
+            </label>
+            <p class="field-hint">
+                Enter a word or phrase, such as "nature" or "city at night". Leave blank
+                to use "nature". Search terms and the color filter are sent to Unsplash.
+            </p>
             <div class="button-row">
                 <button class="button button-primary" type="button" on:click={saveBackgroundKey}>
                     Save key
+                </button>
+                <button class="button" type="button" on:click={saveBackgroundSearchSettings}>
+                    Save search settings
                 </button>
                 <button class="button" type="button" on:click={refreshBackground}>
                     Refresh photo
@@ -990,6 +1040,11 @@
         font: inherit;
         font-size: 0.85rem;
         text-decoration: none;
+    }
+
+    .shortcut-file-actions > .button {
+        box-sizing: border-box;
+        height: 2.5rem;
     }
 
     .button:hover,

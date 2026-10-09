@@ -1,4 +1,8 @@
-import UnsplashService from "../services/unsplash.service";
+import UnsplashService, {
+    DEFAULT_UNSPLASH_COLOR,
+    isUnsplashColor,
+} from "../services/unsplash.service";
+import type { UnsplashColor } from "../services/unsplash.service";
 import { writable } from "svelte/store";
 import type UnsplashResponse from "../models/unsplash-response";
 import { hasAuthenticationInfoAccess } from "../services/extension-permissions";
@@ -18,16 +22,32 @@ const NO_BACKGROUND: UnsplashResponse = {
     photographerUrl: "",
 };
 
+const SEARCH_TERMS_STORAGE_KEY = "unsplashSearchTerms";
+const COLOR_STORAGE_KEY = "unsplashColor";
+const DEFAULT_SEARCH_TERMS = "nature";
+const normalizeSearchTerms = (value: string): string =>
+    value.trim() || DEFAULT_SEARCH_TERMS;
+
 const createBackground = () => {
     const { subscribe, update, set } = writable({
         ...NO_BACKGROUND,
         error: "",
     });
     let localPreviewKey = "";
+    const getSearchTerms = (): string =>
+        normalizeSearchTerms(
+            window.localStorage.getItem(SEARCH_TERMS_STORAGE_KEY) || ""
+        );
+    const getColor = (): UnsplashColor => {
+        const color = window.localStorage.getItem(COLOR_STORAGE_KEY);
+        return color !== null && isUnsplashColor(color)
+            ? color
+            : DEFAULT_UNSPLASH_COLOR;
+    };
 
     const load = async (key: string): Promise<UnsplashResponse> => {
         try {
-            const service = new UnsplashService(key);
+            const service = new UnsplashService(key, getSearchTerms(), getColor());
             const response = await service.get();
             setCache(response);
             set({ ...response, error: "" });
@@ -44,6 +64,20 @@ const createBackground = () => {
 
     return {
         subscribe,
+        getSearchTerms,
+        getColor,
+        saveSearchTerms: (value: string): string => {
+            const searchTerms = normalizeSearchTerms(value);
+            window.localStorage.setItem(SEARCH_TERMS_STORAGE_KEY, searchTerms);
+            return searchTerms;
+        },
+        saveColor: (value: string): UnsplashColor => {
+            const color = isUnsplashColor(value)
+                ? value
+                : DEFAULT_UNSPLASH_COLOR;
+            window.localStorage.setItem(COLOR_STORAGE_KEY, color);
+            return color;
+        },
         refresh: async () => {
             const key = window.localStorage.getItem("unsplash") || localPreviewKey;
             if (!key) {

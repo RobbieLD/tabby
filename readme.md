@@ -6,7 +6,7 @@ Tabby is a customizable new-tab page for Firefox and Chrome, built because I cou
 ## Features 
 - Stores uploaded shortcut icons locally in browser storage.
 - Finds site favicons automatically when adding a shortcut; white favicon backdrops blend into the page and a local image can be uploaded instead.
-- Uses Unsplash's dark-dominant color filter for optional photo backgrounds and credits the photographer.
+- Uses configurable Unsplash search terms and color filters for optional landscape photo backgrounds, with photographer attribution.
 - Uses a dark default background and a first-run welcome panel with a shortcut to Settings.
 - Shows current weather in the top-right corner when a location is configured.
 - Add and remove shortcuts for apps and websites.
@@ -37,7 +37,7 @@ The stable Firefox release is available from the [Firefox Add-ons page](https://
 Pushing a numeric `X.Y.Z` tag submits the Firefox release build and its reproducible source archive to AMO's **listed** channel when the repository has `FIREFOX_JWT_ISSUER` and `FIREFOX_JWT_SECRET` configured under **Settings → Secrets and variables → Actions**. Generate the API key (issuer) and secret from the [AMO API credentials page](https://addons.mozilla.org/en-US/developers/addon/api/key/); store the key as `FIREFOX_JWT_ISSUER` and the secret as `FIREFOX_JWT_SECRET`. Mozilla still reviews listed submissions; the workflow submits the update automatically but does not bypass review, so it appears on the public listing after approval. If the secrets are absent, the workflow warns and skips AMO submission while still creating the GitHub release.
 
 ## Usage
-To use Unsplash backgrounds, add an API access key from the [Unsplash Dev Portal](https://unsplash.com/developers) in Settings. Backgrounds are optional; saving the key requests access to Unsplash. Tabby uses Unsplash's documented black-dominant landscape search filter to prefer darker photos and displays photographer attribution.
+To use Unsplash backgrounds, add an API access key from the [Unsplash Dev Portal](https://unsplash.com/developers) in Settings. Backgrounds are optional; saving the key requests access to Unsplash. Configure the search terms and color filter in **Settings → Background** (defaults are `nature` and `black`; choose **Any color** to omit the color filter). These settings are sent to Unsplash when requesting a landscape photo; photographer attribution is displayed.
 
 To show the Azure DevOps panel, enter your organization name (the part after `dev.azure.com/`) and a personal access token in Settings. Create a PAT with the **Work Items (Read)** scope and an expiry that suits you. The browser asks for Azure DevOps access only when you save a complete, enabled panel configuration. The PAT is stored in the extension's local browser storage and is sent only to Azure DevOps. The panel shows up to 100 of your most recently changed, open work items; use its **Hide completed and done** checkbox to include or exclude those states. Remove the PAT from Settings at any time to hide the panel, delete the saved token, and revoke access.
 

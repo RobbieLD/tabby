@@ -1,5 +1,28 @@
 import type UnsplashResponse from '../models/unsplash-response';
 
+export const UNSPLASH_COLOR_OPTIONS = [
+    { value: "", label: "Any color" },
+    { value: "black_and_white", label: "Black and white" },
+    { value: "black", label: "Black" },
+    { value: "white", label: "White" },
+    { value: "yellow", label: "Yellow" },
+    { value: "orange", label: "Orange" },
+    { value: "red", label: "Red" },
+    { value: "purple", label: "Purple" },
+    { value: "magenta", label: "Magenta" },
+    { value: "green", label: "Green" },
+    { value: "teal", label: "Teal" },
+    { value: "blue", label: "Blue" },
+] as const;
+
+export type UnsplashColor =
+    (typeof UNSPLASH_COLOR_OPTIONS)[number]["value"];
+
+export const DEFAULT_UNSPLASH_COLOR: UnsplashColor = "black";
+
+export const isUnsplashColor = (value: string): value is UnsplashColor =>
+    UNSPLASH_COLOR_OPTIONS.some((option) => option.value === value);
+
 interface UnsplashSearchResponse {
     results?: Array<{
         urls?: { full?: string };
@@ -15,16 +38,22 @@ interface UnsplashSearchResponse {
 
 export default class UnsplashService {
     private key: string
+    private searchTerms: string
+    private color: UnsplashColor
 
-    public constructor(key: string) {
+    public constructor(key: string, searchTerms: string, color: UnsplashColor) {
         this.key = key;
+        this.searchTerms = searchTerms;
+        this.color = color;
     }
 
     public async get(): Promise<UnsplashResponse> {
         const searchUrl = new URL('https://api.unsplash.com/search/photos');
         searchUrl.searchParams.set('orientation', 'landscape');
-        searchUrl.searchParams.set('query', 'nature');
-        searchUrl.searchParams.set('color', 'black');
+        searchUrl.searchParams.set('query', this.searchTerms);
+        if (this.color) {
+            searchUrl.searchParams.set('color', this.color);
+        }
         searchUrl.searchParams.set('per_page', '30');
         searchUrl.searchParams.set('client_id', this.key);
 
@@ -35,7 +64,7 @@ export default class UnsplashService {
 
         const data = (await response.json()) as UnsplashSearchResponse;
         if (!data.results || data.results.length === 0) {
-            throw new Error("Unsplash found no dark landscape photos for this search.");
+            throw new Error("Unsplash found no landscape photos for the current search.");
         }
         const photo = data.results[Math.floor(Math.random() * data.results.length)];
         const imageUrl = photo.urls?.full;
