@@ -2,13 +2,8 @@ name: Release
 
 'on':
   push:
-    branches:
-      - master
     tags:
       - '*.*.*'
-  pull_request:
-    branches:
-      - master
   workflow_dispatch:
 
 permissions:
@@ -16,22 +11,8 @@ permissions:
 
 jobs:
   build:
-    name: Build ${{ matrix.browser }} (${{ matrix.build }})
+    name: Build extension packages
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - browser: firefox
-            build: release
-            extension: xpi
-          - browser: firefox
-            build: dev
-            extension: xpi
-          - browser: chromium
-            build: release
-            extension: zip
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -54,14 +35,14 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         env:
           RELEASE_VERSION: ${{ github.ref_name }}
-          TARGET_DIR: targets/${{ matrix.browser }}/${{ matrix.build }}
         run: |
           set -euo pipefail
           if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Release tags must use the numeric X.Y.Z format."
             exit 1
           fi
-          find "$TARGET_DIR" -maxdepth 1 -type f -name '*.json' \
+          find targets/firefox/release targets/chromium/release \
+            -maxdepth 1 -type f -name '*.json' \
             -exec sed -i "s/__VERSION__/${RELEASE_VERSION}/g" {} +
           sed -i "s/__VERSION__/${RELEASE_VERSION}/g" src/components/Settings.svelte
 
@@ -71,73 +52,160 @@ jobs:
       - name: Type-check
         run: yarn typecheck
 
-      - name: Package extension
-        id: package_extension
+      - name: Package release artifacts
         if: startsWith(github.ref, 'refs/tags/')
-        env:
-          BROWSER: ${{ matrix.browser }}
-          BUILD: ${{ matrix.build }}
-          EXTENSION: ${{ matrix.extension }}
-          FIREFOX_JWT_ISSUER: ${{ matrix.browser == 'firefox' && matrix.build == 'release' && secrets.FIREFOX_JWT_ISSUER || '' }}
-          FIREFOX_JWT_SECRET: ${{ matrix.browser == 'firefox' && matrix.build == 'release' && secrets.FIREFOX_JWT_SECRET || '' }}
         run: |
           set -euo pipefail
-          cp "targets/${BROWSER}/${BUILD}/manifest.json" public/manifest.json
           mkdir -p release-assets
-          archive="tabby-${BROWSER}-${BUILD}.${EXTENSION}"
-          (cd public && zip -q -r "$GITHUB_WORKSPACE/release-assets/$archive" .)
-          update_manifest="targets/${BROWSER}/${BUILD}/update-${BROWSER}-${BUILD}.json"
-          if [[ -f "$update_manifest" ]]; then
-            cp "$update_manifest" release-assets/
+          for browser in firefox chromium; do
+            cp "targets/${browser}/release/manifest.json" public/manifest.json
+            if [[ "$browser" == "firefox" ]]; then
+              extension="xpi"
+            else
+              extension="zip"
+            fi
+            archive="tabby-${browser}-release.${extension}"
+            (cd public && zip -q -r "$GITHUB_WORKSPACE/release-assets/$archive" .)
+
+            update_manifest="targets/${browser}/release/update-${browser}-release.json"
+            if [[ -f "$update_manifest" ]]; then
+              cp "$update_manifest" release-assets/
+            fi
+          done
+
+          source_dir="$RUNNER_TEMP/tabby-source"
+          mkdir -p "$source_dir/public" "$source_dir/targets/firefox"
+          cp -R src package.json yarn.lock rollup.config.js tsconfig.json readme.md "$source_dir/"
+          cp public/index.html "$source_dir/public/"
+          cp -R public/images "$source_dir/public/"
+          cp -R targets/firefox/release "$source_dir/targets/firefox/release"
+          cp targets/firefox/release/manifest.json "$source_dir/public/manifest.json"
+          (cd "$source_dir" && zip -q -r "$RUNNER_TEMP/tabby-source.zip" .)
+
+      - name: Upload release assets
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-assets
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Firefox source archive
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v7
+        with:
+          name: firefox-source
+          path: ${{ runner.temp }}/tabby-source.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  publish_firefox:
+    name: Publish Firefox add-on to AMO
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check AMO credentials
+        id: amo_credentials
+        env:
+          FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
+          FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
+        run: |
+          if [[ -z "${FIREFOX_JWT_ISSUER:-}" || -z "${FIREFOX_JWT_SECRET:-}" ]]; then
+            echo "::warning::AMO submission skipped. Add FIREFOX_JWT_ISSUER and FIREFOX_JWT_SECRET to repository Actions secrets."
+            {
+              echo "### Firefox AMO submission skipped"
+              echo "Configure the repository Actions secrets \`FIREFOX_JWT_ISSUER\` and \`FIREFOX_JWT_SECRET\` to enable automatic submission."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
-          if [[ "$BROWSER" == "firefox" && "$BUILD" == "release" ]]; then
-            if [[ -z "${FIREFOX_JWT_ISSUER:-}" || -z "${FIREFOX_JWT_SECRET:-}" ]]; then
-              echo "::warning::AMO submission skipped. Add FIREFOX_JWT_ISSUER and FIREFOX_JWT_SECRET to repository Actions secrets."
-              {
-                echo "### Firefox AMO submission skipped"
-                echo "Configure the repository Actions secrets \`FIREFOX_JWT_ISSUER\` and \`FIREFOX_JWT_SECRET\` to enable automatic submission."
-              } >> "$GITHUB_STEP_SUMMARY"
-              echo "amo_configured=false" >> "$GITHUB_OUTPUT"
-            else
-              source_dir="$RUNNER_TEMP/tabby-source"
-              mkdir -p "$source_dir/public" "$source_dir/targets/firefox"
-              cp -R src package.json yarn.lock rollup.config.js tsconfig.json readme.md "$source_dir/"
-              cp public/index.html "$source_dir/public/"
-              cp -R public/images "$source_dir/public/"
-              cp -R targets/firefox/release "$source_dir/targets/firefox/release"
-              cp targets/firefox/release/manifest.json "$source_dir/public/manifest.json"
-              (cd "$source_dir" && zip -q -r "$RUNNER_TEMP/tabby-source.zip" .)
-              echo "amo_configured=true" >> "$GITHUB_OUTPUT"
-            fi
-          fi
+      - name: Download release assets
+        if: steps.amo_credentials.outputs.configured == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: release-assets
+          path: release-assets
+
+      - name: Download Firefox source archive
+        if: steps.amo_credentials.outputs.configured == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: firefox-source
+          path: firefox-source
 
       - name: Publish Firefox add-on to AMO
-        if: startsWith(github.ref, 'refs/tags/') && matrix.browser == 'firefox' && matrix.build == 'release' && steps.package_extension.outputs.amo_configured == 'true'
+        if: steps.amo_credentials.outputs.configured == 'true'
         uses: wdzeng/firefox-addon@3184ee491b500e080885e046051366a4228c6e5d # v1.2.1
         with:
           addon-guid: "{b95dddd7-a444-4cac-b348-ca6405b9409f}"
           xpi-path: release-assets/tabby-firefox-release.xpi
-          source-file-path: ${{ runner.temp }}/tabby-source.zip
+          source-file-path: firefox-source/tabby-source.zip
           self-hosted: "false"
           jwt-issuer: ${{ secrets.FIREFOX_JWT_ISSUER }}
           jwt-secret: ${{ secrets.FIREFOX_JWT_SECRET }}
           license: MPL-2.0
           approval-notes: "Submitted automatically from GitHub release ${{ github.ref_name }}."
 
-      - name: Upload release assets
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: actions/upload-artifact@v7
+  publish_chrome:
+    name: Publish Chrome extension to the Web Store
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Chrome Web Store credentials
+        id: chrome_credentials
+        env:
+          CHROME_WEB_STORE_PUBLISHER_ID: ${{ secrets.CHROME_WEB_STORE_PUBLISHER_ID }}
+          CHROME_WEB_STORE_EXTENSION_ID: ${{ secrets.CHROME_WEB_STORE_EXTENSION_ID }}
+          CHROME_WEB_STORE_CLIENT_ID: ${{ secrets.CHROME_WEB_STORE_CLIENT_ID }}
+          CHROME_WEB_STORE_CLIENT_SECRET: ${{ secrets.CHROME_WEB_STORE_CLIENT_SECRET }}
+          CHROME_WEB_STORE_REFRESH_TOKEN: ${{ secrets.CHROME_WEB_STORE_REFRESH_TOKEN }}
+        run: |
+          if [[ -z "${CHROME_WEB_STORE_PUBLISHER_ID:-}" ||
+                -z "${CHROME_WEB_STORE_EXTENSION_ID:-}" ||
+                -z "${CHROME_WEB_STORE_CLIENT_ID:-}" ||
+                -z "${CHROME_WEB_STORE_CLIENT_SECRET:-}" ||
+                -z "${CHROME_WEB_STORE_REFRESH_TOKEN:-}" ]]; then
+            echo "::warning::Chrome Web Store submission skipped. Configure all CHROME_WEB_STORE_* repository Actions secrets."
+            {
+              echo "### Chrome Web Store submission skipped"
+              echo "Configure the repository Actions secrets \`CHROME_WEB_STORE_PUBLISHER_ID\`, \`CHROME_WEB_STORE_EXTENSION_ID\`, \`CHROME_WEB_STORE_CLIENT_ID\`, \`CHROME_WEB_STORE_CLIENT_SECRET\`, and \`CHROME_WEB_STORE_REFRESH_TOKEN\` to enable automatic submission."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download release assets
+        if: steps.chrome_credentials.outputs.configured == 'true'
+        uses: actions/download-artifact@v8
         with:
-          name: release-${{ matrix.browser }}-${{ matrix.build }}
-          path: release-assets/*
-          if-no-files-found: error
-          retention-days: 1
+          name: release-assets
+          path: release-assets
+
+      - name: Submit Chrome extension to the Web Store
+        if: steps.chrome_credentials.outputs.configured == 'true'
+        uses: mnao305/chrome-extension-upload@f549d5d654694a7722d6abfa64c97409ad5e64c1 # v7.0.0
+        with:
+          file-path: release-assets/tabby-chromium-release.zip
+          extension-id: ${{ secrets.CHROME_WEB_STORE_EXTENSION_ID }}
+          publisher-id: ${{ secrets.CHROME_WEB_STORE_PUBLISHER_ID }}
+          client-id: ${{ secrets.CHROME_WEB_STORE_CLIENT_ID }}
+          client-secret: ${{ secrets.CHROME_WEB_STORE_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CHROME_WEB_STORE_REFRESH_TOKEN }}
+          publish: true
 
   release:
     name: Publish GitHub release
     if: startsWith(github.ref, 'refs/tags/')
-    needs: build
+    needs:
+      - build
+      - publish_firefox
+      - publish_chrome
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -148,8 +216,8 @@ jobs:
       - name: Download release assets
         uses: actions/download-artifact@v8
         with:
+          name: release-assets
           path: release-assets
-          merge-multiple: true
 
       - name: Publish release
         uses: softprops/action-gh-release@v3
