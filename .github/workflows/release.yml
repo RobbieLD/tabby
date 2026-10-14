@@ -106,17 +106,25 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Check AMO credentials
+      - name: Check AMO publishing configuration
         id: amo_credentials
         env:
           FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
           FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
+          FIREFOX_AMO_PUBLISH: ${{ vars.FIREFOX_AMO_PUBLISH }}
         run: |
           if [[ -z "${FIREFOX_JWT_ISSUER:-}" || -z "${FIREFOX_JWT_SECRET:-}" ]]; then
-            echo "::warning::AMO submission skipped. Add FIREFOX_JWT_ISSUER and FIREFOX_JWT_SECRET to repository Actions secrets."
+            echo "::warning::AMO submission skipped. Add FIREFOX_JWT_ISSUER and FIREFOX_JWT_SECRET as repository Actions secrets and set FIREFOX_AMO_PUBLISH=true as a repository Actions variable."
             {
               echo "### Firefox AMO submission skipped"
-              echo "Configure the repository Actions secrets \`FIREFOX_JWT_ISSUER\` and \`FIREFOX_JWT_SECRET\` to enable automatic submission."
+              echo "Configure repository Actions secrets \`FIREFOX_JWT_ISSUER\` and \`FIREFOX_JWT_SECRET\`, and set repository variable \`FIREFOX_AMO_PUBLISH\` to \`true\` to enable automatic submission."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          elif [[ "${FIREFOX_AMO_PUBLISH:-}" != "true" ]]; then
+            echo "::notice::AMO submission is temporarily disabled. Set repository Actions variable FIREFOX_AMO_PUBLISH=true to re-enable it."
+            {
+              echo "### Firefox AMO submission disabled"
+              echo "Set repository Actions variable \`FIREFOX_AMO_PUBLISH\` to \`true\` to re-enable submissions."
             } >> "$GITHUB_STEP_SUMMARY"
             echo "configured=false" >> "$GITHUB_OUTPUT"
           else
@@ -156,7 +164,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Check Chrome Web Store credentials
+      - name: Check Chrome Web Store publishing configuration
         id: chrome_credentials
         env:
           CHROME_WEB_STORE_PUBLISHER_ID: ${{ secrets.CHROME_WEB_STORE_PUBLISHER_ID }}
@@ -164,16 +172,24 @@ jobs:
           CHROME_WEB_STORE_CLIENT_ID: ${{ secrets.CHROME_WEB_STORE_CLIENT_ID }}
           CHROME_WEB_STORE_CLIENT_SECRET: ${{ secrets.CHROME_WEB_STORE_CLIENT_SECRET }}
           CHROME_WEB_STORE_REFRESH_TOKEN: ${{ secrets.CHROME_WEB_STORE_REFRESH_TOKEN }}
+          CHROME_WEB_STORE_PUBLISH: ${{ vars.CHROME_WEB_STORE_PUBLISH }}
         run: |
           if [[ -z "${CHROME_WEB_STORE_PUBLISHER_ID:-}" ||
                 -z "${CHROME_WEB_STORE_EXTENSION_ID:-}" ||
                 -z "${CHROME_WEB_STORE_CLIENT_ID:-}" ||
                 -z "${CHROME_WEB_STORE_CLIENT_SECRET:-}" ||
                 -z "${CHROME_WEB_STORE_REFRESH_TOKEN:-}" ]]; then
-            echo "::warning::Chrome Web Store submission skipped. Configure all CHROME_WEB_STORE_* repository Actions secrets."
+            echo "::warning::Chrome Web Store submission skipped. Configure all CHROME_WEB_STORE_* repository Actions secrets and set CHROME_WEB_STORE_PUBLISH=true as a repository Actions variable."
             {
               echo "### Chrome Web Store submission skipped"
-              echo "Configure the repository Actions secrets \`CHROME_WEB_STORE_PUBLISHER_ID\`, \`CHROME_WEB_STORE_EXTENSION_ID\`, \`CHROME_WEB_STORE_CLIENT_ID\`, \`CHROME_WEB_STORE_CLIENT_SECRET\`, and \`CHROME_WEB_STORE_REFRESH_TOKEN\` to enable automatic submission."
+              echo "Configure repository Actions secrets \`CHROME_WEB_STORE_PUBLISHER_ID\`, \`CHROME_WEB_STORE_EXTENSION_ID\`, \`CHROME_WEB_STORE_CLIENT_ID\`, \`CHROME_WEB_STORE_CLIENT_SECRET\`, and \`CHROME_WEB_STORE_REFRESH_TOKEN\`, and set repository variable \`CHROME_WEB_STORE_PUBLISH\` to \`true\` to enable automatic submission."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          elif [[ "${CHROME_WEB_STORE_PUBLISH:-}" != "true" ]]; then
+            echo "::notice::Chrome Web Store submission is disabled. Set repository Actions variable CHROME_WEB_STORE_PUBLISH=true to enable it."
+            {
+              echo "### Chrome Web Store submission disabled"
+              echo "Set repository Actions variable \`CHROME_WEB_STORE_PUBLISH\` to \`true\` to enable submissions."
             } >> "$GITHUB_STEP_SUMMARY"
             echo "configured=false" >> "$GITHUB_OUTPUT"
           else
