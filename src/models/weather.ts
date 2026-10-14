@@ -2,7 +2,7 @@ export interface WeatherLocation {
     name: string;
     latitude: number;
     longitude: number;
-    source: "browser" | "preview";
+    source: "manual" | "browser" | "preview";
 }
 
 export interface CurrentWeather {

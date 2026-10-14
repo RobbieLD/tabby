@@ -1,0 +1,19 @@
+{
+    "manifest_version": 3,
+    "name": "Tabby (Development)",
+    "short_name": "Tabby Dev",
+    "version": "0.0.1",
+    "description": "Development build of the Tabby new tab extension",
+    "chrome_url_overrides": {
+        "newtab": "index.html"
+    },
+    "icons": {
+        "48": "images/favicon.png"
+    },
+    "optional_host_permissions": [
+        "https://dev.azure.com/*",
+        "https://api.open-meteo.com/*",
+        "https://geocoding-api.open-meteo.com/*",
+        "https://api.unsplash.com/*"
+    ]
+}

@@ -1,7 +1,9 @@
 {
     "scripts": {
         "build": "rollup -c --bundleConfigAsCjs",
+        "build:chromium": "yarn build && node scripts/copy-chromium-dev-manifest.mjs",
         "dev": "rollup -c -w --bundleConfigAsCjs",
+        "dev:chromium": "node scripts/copy-chromium-dev-manifest.mjs && rollup -c -w --bundleConfigAsCjs",
         "start": "sirv public",
         "typecheck": "tsc --noEmit"
     },

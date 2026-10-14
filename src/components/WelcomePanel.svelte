@@ -14,7 +14,7 @@
     <ol>
         <li>Open Settings below.</li>
         <li>Add a shortcut for your first website.</li>
-        <li>Set a background or browser-location weather whenever you like.</li>
+        <li>Set a background or choose a weather location whenever you like.</li>
     </ol>
     <button class="welcome-action" type="button" on:click={openSettings}>
         Open settings

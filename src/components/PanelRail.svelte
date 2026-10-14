@@ -26,6 +26,36 @@
         backdrop-filter: blur(16px);
         overflow-x: hidden;
         overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(198, 237, 249, 0.48) rgba(0, 0, 0, 0.12);
+    }
+
+    .panel-rail:hover {
+        scrollbar-color: rgba(198, 237, 249, 0.72) rgba(0, 0, 0, 0.18);
+    }
+
+    .panel-rail::-webkit-scrollbar {
+        width: 0.7rem;
+    }
+
+    .panel-rail::-webkit-scrollbar-track {
+        border-radius: 0.5rem;
+        background: rgba(0, 0, 0, 0.12);
+    }
+
+    .panel-rail::-webkit-scrollbar-thumb {
+        border: 0.2rem solid transparent;
+        border-radius: 0.5rem;
+        background-color: rgba(198, 237, 249, 0.48);
+        background-clip: padding-box;
+    }
+
+    .panel-rail::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(198, 237, 249, 0.72);
+    }
+
+    .panel-rail::-webkit-scrollbar-thumb:active {
+        background-color: rgba(198, 237, 249, 0.9);
     }
 
     .panel-rail--left {
@@ -46,6 +76,12 @@
         .panel-rail--left {
             width: auto;
             max-width: none;
+        }
+    }
+
+    @media (forced-colors: active) {
+        .panel-rail {
+            scrollbar-color: auto;
         }
     }
 </style>

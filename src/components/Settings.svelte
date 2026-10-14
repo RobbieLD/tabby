@@ -3,12 +3,10 @@
     import { icons } from "../stores/icons";
     import { azureDevOpsSettings } from "../stores/azure-devops";
     import { weatherLocation } from "../stores/weather";
+    import type { WeatherLocation } from "../models/weather";
     import { normalizeOrganization } from "../services/azure-devops.service";
     import { UNSPLASH_COLOR_OPTIONS } from "../services/unsplash.service";
-    import {
-        getBrowserWeatherLocation,
-        resolveWeatherPlaceName,
-    } from "../services/weather.service";
+    import { searchWeatherLocations } from "../services/weather.service";
     import { isLocalPreview, localPreviewConfig } from "../utils/environment";
     import {
         removeAzureDevOpsAccess,
@@ -52,6 +50,9 @@
     let iconPermissionMessageIsError = false;
     let weatherMessage = "";
     let weatherMessageIsError = false;
+    let weatherPlaceQuery = $weatherLocation?.name || "";
+    let weatherSearchResults: WeatherLocation[] = [];
+    let weatherSearching = false;
     $: reorderIconIndex = $icons.findIndex(
         (icon) => icon.title === reorderIconTitle
     );
@@ -273,45 +274,35 @@
         }
     }
 
-    async function saveWeatherLocation(): Promise<void> {
+    async function searchWeatherLocation(): Promise<void> {
         weatherMessage = "";
         weatherMessageIsError = false;
+        weatherSearchResults = [];
+
+        const query = weatherPlaceQuery.trim();
+        if (query.length < 2) {
+            weatherMessage = "Enter at least two characters to search for a location.";
+            weatherMessageIsError = true;
+            return;
+        }
+
         const previousLocation = $weatherLocation;
         let requestedAccess = false;
+        weatherSearching = true;
 
         try {
-            if (isLocalPreview()) {
-                weatherLocation.save({
-                    name: "Sample location",
-                    latitude: 47.6062,
-                    longitude: -122.3321,
-                    source: "preview",
-                });
-                weatherMessage = "Preview location saved. Sample weather is shown locally.";
-                return;
+            if (!isLocalPreview()) {
+                const granted = await requestWeatherAccess();
+                if (!granted) {
+                    throw new Error(
+                        "Open-Meteo access was not granted, so the location could not be searched."
+                    );
+                }
+                requestedAccess = true;
             }
 
-            const granted = await requestWeatherAccess();
-            if (!granted) {
-                throw new Error(
-                    "Open-Meteo access was not granted, so the weather location was not saved."
-                );
-            }
-            requestedAccess = true;
-
-            let location = await getBrowserWeatherLocation();
-            let placeNameWarning = "";
-            try {
-                location = await resolveWeatherPlaceName(location);
-            } catch (error) {
-                placeNameWarning =
-                    "Place name lookup failed; weather will show as My location. " +
-                    messageFromError(error);
-            }
-            weatherLocation.save(location);
-            weatherMessage =
-                placeNameWarning || `Weather location saved as ${location.name}.`;
-            weatherMessageIsError = Boolean(placeNameWarning);
+            weatherSearchResults = await searchWeatherLocations(query);
+            weatherMessage = "Choose the correct place to save your weather location.";
         } catch (error) {
             weatherMessage = messageFromError(error);
             if (requestedAccess && !previousLocation) {
@@ -324,12 +315,29 @@
                 }
             }
             weatherMessageIsError = true;
+        } finally {
+            weatherSearching = false;
+        }
+    }
+
+    function saveWeatherLocation(location: WeatherLocation): void {
+        try {
+            weatherLocation.save(location);
+            weatherPlaceQuery = location.name;
+            weatherSearchResults = [];
+            weatherMessage = `Weather location saved as ${location.name}.`;
+            weatherMessageIsError = false;
+        } catch (error) {
+            weatherMessage = messageFromError(error);
+            weatherMessageIsError = true;
         }
     }
 
     async function clearWeatherLocation(): Promise<void> {
         try {
             weatherLocation.clear();
+            weatherPlaceQuery = "";
+            weatherSearchResults = [];
         } catch (error) {
             weatherMessage = messageFromError(error);
             weatherMessageIsError = true;
@@ -704,40 +712,68 @@
         <section class="settings-section" aria-labelledby="weather-heading">
             <h2 id="weather-heading">Weather</h2>
             <p class="section-description">
-                Use your browser's current location to show local weather in the top-right
-                corner. Temperatures are in Celsius and wind speeds are in km/h.
+                Search for a city or place to show local weather in the top-right corner.
+                Add a region or country to narrow matches. Temperatures are in Celsius and
+                wind speeds are in km/h.
             </p>
             <p class="field-hint">
-                When you choose this, your browser asks whether Tabby can access your
-                location. Coordinates are stored in this browser and sent directly to
-                Open-Meteo for weather and BigDataCloud to find a nearby place name. Both
-                services also receive your network IP address. Tabby does not request
-                location in the background.
+                Tabby never requests your device location. Your search is sent to Open-Meteo
+                to find matching places; the selected coordinates are saved in this browser
+                and sent to Open-Meteo for weather. Your browser may ask for Open-Meteo
+                access, and Firefox may ask for location-data consent; neither allows
+                Tabby to detect your current location. Open-Meteo also receives your
+                network IP address.
             </p>
-            <div class="button-row">
-                <button
-                    class="button button-primary"
-                    type="button"
-                    on:click={saveWeatherLocation}
-                >
-                    {$weatherLocation ? "Update browser location" : "Use browser location"}
-                </button>
-                <button
-                    class="button"
-                    type="button"
-                    on:click={clearWeatherLocation}
-                    disabled={!$weatherLocation}
-                >
-                    Clear location
-                </button>
-            </div>
+            <form on:submit|preventDefault={searchWeatherLocation}>
+                <label class="field">
+                    City or place
+                    <input
+                        type="search"
+                        bind:value={weatherPlaceQuery}
+                        placeholder="For example, Seattle, WA"
+                        minlength="2"
+                        disabled={weatherSearching}
+                        required
+                    />
+                </label>
+                <div class="button-row">
+                    <button
+                        class="button button-primary"
+                        type="submit"
+                        disabled={weatherSearching || weatherPlaceQuery.trim().length < 2}
+                    >
+                        {weatherSearching ? "Searching…" : "Search locations"}
+                    </button>
+                    <button
+                        class="button"
+                        type="button"
+                        on:click={clearWeatherLocation}
+                        disabled={weatherSearching}
+                    >
+                        Clear location and access
+                    </button>
+                </div>
+            </form>
+            {#if weatherSearchResults.length > 0}
+                <p class="field-hint">Choose the matching city or place:</p>
+                <div class="weather-location-results" aria-label="Location search results">
+                    {#each weatherSearchResults as location (location.latitude + "," + location.longitude)}
+                        <button
+                            class="button weather-location-result"
+                            type="button"
+                            on:click={() => saveWeatherLocation(location)}
+                        >
+                            <span>{location.name}</span>
+                            <small>
+                                {location.latitude.toFixed(2)}, {location.longitude.toFixed(2)}
+                            </small>
+                        </button>
+                    {/each}
+                </div>
+            {/if}
             {#if $weatherLocation}
                 <p class="field-hint">
-                    {#if $weatherLocation.source === "preview"}
-                        Preview location is configured.
-                    {:else}
-                        Browser location is saved for weather.
-                    {/if}
+                    Saved weather location: {$weatherLocation.name}
                 </p>
             {/if}
             {#if weatherMessage}
@@ -1024,6 +1060,30 @@
     .manage-shortcuts .field {
         flex: 1 1 12rem;
         margin: 0;
+    }
+
+    .weather-location-results {
+        display: grid;
+        gap: 0.45rem;
+        margin-top: 0.55rem;
+    }
+
+    .weather-location-result {
+        width: 100%;
+        justify-content: space-between;
+        gap: 0.75rem;
+        text-align: left;
+    }
+
+    .weather-location-result span {
+        overflow-wrap: anywhere;
+    }
+
+    .weather-location-result small {
+        flex: 0 0 auto;
+        color: #5c6d73;
+        font-size: 0.72rem;
+        font-weight: 400;
     }
 
     .button {

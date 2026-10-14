@@ -26,7 +26,9 @@ const isWeatherLocation = (value: unknown): value is WeatherLocation => {
         Number.isFinite(candidate.longitude) &&
         candidate.longitude >= -180 &&
         candidate.longitude <= 180 &&
-        (candidate.source === "browser" || candidate.source === "preview")
+        (candidate.source === "manual" ||
+            candidate.source === "browser" ||
+            candidate.source === "preview")
     );
 };
 

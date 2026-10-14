@@ -13,13 +13,25 @@ interface FirefoxPermissions {
     contains?(permission: ExtensionPermission): Promise<boolean>;
 }
 
+interface FirefoxExtensionApi {
+    permissions?: FirefoxPermissions;
+    runtime?: {
+        getBrowserInfo?: () => Promise<unknown>;
+    };
+}
+
+interface ChromePermission {
+    origins?: string[];
+    permissions?: string[];
+}
+
 interface ChromePermissions {
     request(
-        permission: ExtensionPermission,
+        permission: ChromePermission,
         callback: (granted: boolean) => void
     ): void;
     remove(
-        permission: ExtensionPermission,
+        permission: ChromePermission,
         callback: (removed: boolean) => void
     ): void;
 }
@@ -32,24 +44,45 @@ interface ChromeExtensionApi {
 }
 
 interface ExtensionWindow extends Window {
-    browser?: { permissions?: FirefoxPermissions };
+    browser?: FirefoxExtensionApi;
     chrome?: ChromeExtensionApi;
 }
 
 export const websiteActivityAccess = writable(false);
 
+const getFirefoxPermissions = (): FirefoxPermissions | undefined => {
+    const browserApi = (window as ExtensionWindow).browser;
+    // Firefox exposes getBrowserInfo; Chrome's browser namespace does not support data_collection.
+    if (typeof browserApi?.runtime?.getBrowserInfo !== "function") {
+        return undefined;
+    }
+
+    return browserApi.permissions;
+};
+
+const toChromePermission = (
+    permission: ExtensionPermission
+): ChromePermission => {
+    const chromePermission: ChromePermission = {};
+    if (permission.origins) {
+        chromePermission.origins = permission.origins;
+    }
+    if (permission.permissions) {
+        chromePermission.permissions = permission.permissions;
+    }
+    return chromePermission;
+};
+
 const requestExtensionPermission = (
     permission: ExtensionPermission
 ): Promise<boolean> => {
     const extensionWindow = window as ExtensionWindow;
-    if (extensionWindow.browser?.permissions) {
-        return extensionWindow.browser.permissions.request(permission);
+    const firefoxPermissions = getFirefoxPermissions();
+    if (firefoxPermissions) {
+        return firefoxPermissions.request(permission);
     }
 
-    const chromePermission = {
-        origins: permission.origins,
-        permissions: permission.permissions,
-    };
+    const chromePermission = toChromePermission(permission);
     if (!chromePermission.origins && !chromePermission.permissions) {
         return Promise.resolve(true);
     }
@@ -84,14 +117,12 @@ const removeExtensionPermission = (
     permission: ExtensionPermission
 ): Promise<boolean> => {
     const extensionWindow = window as ExtensionWindow;
-    if (extensionWindow.browser?.permissions) {
-        return extensionWindow.browser.permissions.remove(permission);
+    const firefoxPermissions = getFirefoxPermissions();
+    if (firefoxPermissions) {
+        return firefoxPermissions.remove(permission);
     }
 
-    const chromePermission = {
-        origins: permission.origins,
-        permissions: permission.permissions,
-    };
+    const chromePermission = toChromePermission(permission);
     if (!chromePermission.origins && !chromePermission.permissions) {
         return Promise.resolve(false);
     }
@@ -130,7 +161,7 @@ export const removeAuthenticationInfoAccess = (): Promise<boolean> =>
     removeExtensionPermission({ data_collection: ["authenticationInfo"] });
 
 export const hasAuthenticationInfoAccess = async (): Promise<boolean> => {
-    const browserPermissions = (window as ExtensionWindow).browser?.permissions;
+    const browserPermissions = getFirefoxPermissions();
     if (!browserPermissions) {
         return true;
     }
@@ -147,7 +178,7 @@ export const hasLocationInfoAccess = async (): Promise<boolean> => {
         return true;
     }
 
-    const browserPermissions = (window as ExtensionWindow).browser?.permissions;
+    const browserPermissions = getFirefoxPermissions();
     if (!browserPermissions) {
         return true;
     }
@@ -161,10 +192,9 @@ export const hasLocationInfoAccess = async (): Promise<boolean> => {
 
 const WEATHER_PERMISSION: ExtensionPermission = {
     origins: [
+        "https://geocoding-api.open-meteo.com/*",
         "https://api.open-meteo.com/*",
-        "https://api.bigdatacloud.net/*",
     ],
-    permissions: ["geolocation"],
     data_collection: ["locationInfo"],
 };
 
@@ -194,7 +224,7 @@ export const hasWebsiteActivityAccess = async (): Promise<boolean> => {
         return true;
     }
 
-    const browserPermissions = (window as ExtensionWindow).browser?.permissions;
+    const browserPermissions = getFirefoxPermissions();
     if (!browserPermissions) {
         return true;
     }

@@ -9,11 +9,16 @@ interface ForecastResponse {
     };
 }
 
-interface PlaceNameResponse {
-    city?: string | null;
-    locality?: string | null;
-    principalSubdivision?: string | null;
-    countryName?: string | null;
+interface GeocodingResult {
+    name?: string | null;
+    latitude?: number;
+    longitude?: number;
+    admin1?: string | null;
+    country?: string | null;
+}
+
+interface GeocodingResponse {
+    results?: GeocodingResult[];
 }
 
 const readResponse = async (
@@ -27,90 +32,72 @@ const readResponse = async (
     return response.json() as Promise<unknown>;
 };
 
-export const getBrowserWeatherLocation = (): Promise<WeatherLocation> =>
-    new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-            reject(new Error("This browser does not provide location access."));
-            return;
-        }
+const formatPlaceName = (place: GeocodingResult): string => {
+    const parts = [place.name, place.admin1, place.country]
+        .filter((part): part is string => typeof part === "string")
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0);
 
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const { latitude, longitude } = position.coords;
-                if (
-                    !Number.isFinite(latitude) ||
-                    latitude < -90 ||
-                    latitude > 90 ||
-                    !Number.isFinite(longitude) ||
-                    longitude < -180 ||
-                    longitude > 180
-                ) {
-                    reject(new Error("The browser returned invalid location coordinates."));
-                    return;
-                }
+    return parts
+        .filter(
+            (part, index) =>
+                parts.findIndex(
+                    (candidate) =>
+                        candidate.toLocaleLowerCase() === part.toLocaleLowerCase()
+                ) === index
+        )
+        .join(", ");
+};
 
-                resolve({
-                    name: "My location",
-                    latitude,
-                    longitude,
-                    source: "browser",
-                });
-            },
-            (error) => {
-                if (error.code === error.PERMISSION_DENIED) {
-                    reject(
-                        new Error(
-                            "Location access was denied. Allow location access for Tabby in your browser settings, then try again."
-                        )
-                    );
-                    return;
-                }
-                if (error.code === error.POSITION_UNAVAILABLE) {
-                    reject(
-                        new Error(
-                            "The browser could not determine your location. Check that location services are available, then try again."
-                        )
-                    );
-                    return;
-                }
-
-                reject(
-                    new Error(
-                        "The browser took too long to determine your location. Try again."
-                    )
-                );
-            },
-            {
-                enableHighAccuracy: false,
-                maximumAge: 5 * 60 * 1000,
-                timeout: 20 * 1000,
-            }
-        );
-    });
-
-export const resolveWeatherPlaceName = async (
-    location: WeatherLocation,
+export const searchWeatherLocations = async (
+    query: string,
     signal?: AbortSignal
-): Promise<WeatherLocation> => {
-    const url = new URL(
-        "https://api.bigdatacloud.net/data/reverse-geocode-client"
-    );
-    url.searchParams.set("latitude", location.latitude.toString());
-    url.searchParams.set("longitude", location.longitude.toString());
-    url.searchParams.set("localityLanguage", "en");
-
-    const response = await fetch(url, { signal, cache: "no-store" });
-    const result = (await readResponse(response, "Place name lookup")) as PlaceNameResponse;
-    const placeName =
-        result.city?.trim() ||
-        result.locality?.trim() ||
-        result.principalSubdivision?.trim() ||
-        result.countryName?.trim();
-    if (!placeName) {
-        throw new Error("The place name service did not find a nearby city or locality.");
+): Promise<WeatherLocation[]> => {
+    const searchTerm = query.trim();
+    if (searchTerm.length < 2) {
+        throw new Error("Enter at least two characters to search for a location.");
     }
 
-    return { ...location, name: placeName };
+    const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
+    url.searchParams.set("name", searchTerm);
+    url.searchParams.set("count", "5");
+    url.searchParams.set("language", "en");
+    url.searchParams.set("format", "json");
+
+    const response = await fetch(url, { signal });
+    const result = (await readResponse(
+        response,
+        "Location search"
+    )) as GeocodingResponse | null;
+    const places = Array.isArray(result?.results) ? result.results : [];
+    const locations: WeatherLocation[] = [];
+    for (const place of places) {
+        const name = formatPlaceName(place);
+        const { latitude, longitude } = place;
+        if (
+            !name ||
+            typeof latitude !== "number" ||
+            !Number.isFinite(latitude) ||
+            latitude < -90 ||
+            latitude > 90 ||
+            typeof longitude !== "number" ||
+            !Number.isFinite(longitude) ||
+            longitude < -180 ||
+            longitude > 180
+        ) {
+            continue;
+        }
+
+        locations.push({ name, latitude, longitude, source: "manual" });
+    }
+
+    if (locations.length === 0) {
+        throw new Error(
+            `No matching locations found for "${searchTerm}". Try adding a region or country.`
+        );
+    }
+
+    return locations;
 };
 
 export const getCurrentWeather = async (

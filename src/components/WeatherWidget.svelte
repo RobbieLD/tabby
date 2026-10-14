@@ -205,29 +205,41 @@
         <div class="weather-copy">
             <span class="weather-location">Current weather</span>
             <button class="weather-setup" type="button" on:click={openSettings}>
-                Use browser location in Settings
+                Choose a location in Settings
             </button>
         </div>
     {/if}
-    <a
-        class="weather-attribution"
-        href="https://open-meteo.com/"
-        target="_blank"
-        rel="noopener noreferrer"
-        title="Weather data by Open-Meteo"
-    >
-        Open-Meteo
-    </a>
-    <span class="attribution-separator" aria-hidden="true">·</span>
-    <a
-        class="weather-attribution"
-        href="https://www.bigdatacloud.com/geocoding-apis/free-reverse-geocode-to-city-api"
-        target="_blank"
-        rel="noopener noreferrer"
-        title="Place name data by BigDataCloud"
-    >
-        BigDataCloud
-    </a>
+    <div class="weather-attribution-row">
+        <a
+            class="weather-attribution"
+            href="https://open-meteo.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Weather and geocoding API by Open-Meteo"
+        >
+            Open-Meteo
+        </a>
+        <span class="attribution-separator" aria-hidden="true">·</span>
+        <a
+            class="weather-attribution"
+            href="https://www.geonames.org/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Geocoding place data by GeoNames"
+        >
+            GeoNames
+        </a>
+        <span class="attribution-separator" aria-hidden="true">·</span>
+        <a
+            class="weather-attribution"
+            href="https://creativecommons.org/licenses/by/4.0/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open-Meteo data licence: Creative Commons Attribution 4.0"
+        >
+            CC BY 4.0
+        </a>
+    </div>
 </aside>
 
 <style>
@@ -342,6 +354,14 @@
         color: rgba(255, 255, 255, 0.6);
         font-size: 0.58rem;
         text-decoration: none;
+    }
+
+    .weather-attribution-row {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 0.3rem;
     }
 
     .attribution-separator {
