@@ -1,6 +1,6 @@
 <script lang="ts">
-    import AssignedWorkItems from "./AssignedWorkItems.svelte";
     import PanelRail from "./PanelRail.svelte";
+    import WorkItemsPanel from "./WorkItemsPanel.svelte";
 
     export let enabled = false;
     export let organization = "";
@@ -9,9 +9,31 @@
 
 {#if enabled && organization && pat}
     <PanelRail side="left">
-        <AssignedWorkItems
-            {organization}
-            {pat}
-        />
+        <div class="panel-card">
+            <WorkItemsPanel
+                {organization}
+                {pat}
+                kind="assigned"
+            />
+        </div>
+        <div class="panel-card">
+            <WorkItemsPanel
+                {organization}
+                {pat}
+                kind="followed"
+            />
+        </div>
     </PanelRail>
 {/if}
+
+<style>
+    .panel-card {
+        box-sizing: border-box;
+        min-width: 0;
+        padding: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 0.6rem;
+        background: rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(16px);
+    }
+</style>

@@ -11,6 +11,7 @@
 
     export let organization: string;
     export let pat: string;
+    export let kind: "assigned" | "followed" = "assigned";
 
     let items: WorkItem[] = [];
     let loading = true;
@@ -29,14 +30,87 @@
         void loadItems(
             organization,
             pat,
-            $azureDevOpsSettings.hideCompletedAndDone
+            $azureDevOpsSettings.hideCompletedAndDone,
+            kind
         );
     }
+
+    const sampleItems: Record<"assigned" | "followed", WorkItem[]> = {
+        assigned: [
+            {
+                id: 1042,
+                title: "Review the new booking flow",
+                type: "User Story",
+                state: "Active",
+                project: "Travel Platform",
+                url: "https://dev.azure.com/contoso/Travel%20Platform/_workitems/edit/1042",
+            },
+            {
+                id: 1058,
+                title: "Update accessibility checks",
+                type: "Task",
+                state: "New",
+                project: "Travel Platform",
+                url: "https://dev.azure.com/contoso/Travel%20Platform/_workitems/edit/1058",
+            },
+            {
+                id: 1084,
+                title: "Fix a long work item title to check wrapping in the panel",
+                type: "Bug",
+                state: "Committed",
+                project: "Customer Experience",
+                url: "https://dev.azure.com/contoso/Customer%20Experience/_workitems/edit/1084",
+            },
+            {
+                id: 1090,
+                title: "Completed design review",
+                type: "Task",
+                state: "Completed",
+                project: "Travel Platform",
+                url: "https://dev.azure.com/contoso/Travel%20Platform/_workitems/edit/1090",
+            },
+            {
+                id: 1091,
+                title: "Done: update release notes",
+                type: "Task",
+                state: "Done",
+                project: "Travel Platform",
+                url: "https://dev.azure.com/contoso/Travel%20Platform/_workitems/edit/1091",
+            },
+        ],
+        followed: [
+            {
+                id: 1063,
+                title: "Review mobile navigation changes",
+                type: "User Story",
+                state: "Active",
+                project: "Customer Experience",
+                url: "https://dev.azure.com/contoso/Customer%20Experience/_workitems/edit/1063",
+            },
+            {
+                id: 1072,
+                title: "Investigate payment timeout reports",
+                type: "Bug",
+                state: "New",
+                project: "Travel Platform",
+                url: "https://dev.azure.com/contoso/Travel%20Platform/_workitems/edit/1072",
+            },
+            {
+                id: 1102,
+                title: "Done: retire legacy booking endpoint",
+                type: "Task",
+                state: "Done",
+                project: "Travel Platform",
+                url: "https://dev.azure.com/contoso/Travel%20Platform/_workitems/edit/1102",
+            },
+        ],
+    };
 
     async function loadItems(
         org: string,
         token: string,
-        hideCompletedAndDone: boolean
+        hideCompletedAndDone: boolean,
+        itemKind: "assigned" | "followed"
     ): Promise<void> {
         activeController?.abort();
         const controller = new AbortController();
@@ -56,67 +130,32 @@
                 );
             }
 
-            items = useSampleData
-                ? [
-                      {
-                          id: 1042,
-                          title: "Review the new booking flow",
-                          type: "User Story",
-                          state: "Active",
-                          project: "Travel Platform",
-                          url: "https://dev.azure.com/contoso/Travel%20Platform/_workitems/edit/1042",
-                      },
-                      {
-                          id: 1058,
-                          title: "Update accessibility checks",
-                          type: "Task",
-                          state: "New",
-                          project: "Travel Platform",
-                          url: "https://dev.azure.com/contoso/Travel%20Platform/_workitems/edit/1058",
-                      },
-                      {
-                          id: 1084,
-                          title: "Fix a long work item title to check wrapping in the panel",
-                          type: "Bug",
-                          state: "Committed",
-                          project: "Customer Experience",
-                          url: "https://dev.azure.com/contoso/Customer%20Experience/_workitems/edit/1084",
-                      },
-                      {
-                          id: 1090,
-                          title: "Completed design review",
-                          type: "Task",
-                          state: "Completed",
-                          project: "Travel Platform",
-                          url: "https://dev.azure.com/contoso/Travel%20Platform/_workitems/edit/1090",
-                      },
-                      {
-                          id: 1091,
-                          title: "Done: update release notes",
-                          type: "Task",
-                          state: "Done",
-                          project: "Travel Platform",
-                          url: "https://dev.azure.com/contoso/Travel%20Platform/_workitems/edit/1091",
-                      },
-                  ]
-                      .filter((item) =>
-                          hideCompletedAndDone
-                              ? !["completed", "done"].includes(item.state.toLowerCase())
-                              : true
-                      )
-                : await new AzureDevOpsService(
-                      org,
-                      token
-                  ).getAssignedWorkItems(
-                      controller.signal,
-                      hideCompletedAndDone
-                  );
+            if (useSampleData) {
+                const hiddenStates = hideCompletedAndDone
+                    ? ["completed", "done"]
+                    : [];
+                items = sampleItems[itemKind].filter(
+                    (item) => !hiddenStates.includes(item.state.toLowerCase())
+                );
+            } else {
+                const service = new AzureDevOpsService(org, token);
+                items =
+                    itemKind === "assigned"
+                        ? await service.getAssignedWorkItems(
+                              controller.signal,
+                              hideCompletedAndDone
+                          )
+                        : await service.getFollowedWorkItems(
+                              controller.signal,
+                              hideCompletedAndDone
+                          );
+            }
         } catch (cause) {
             if (!controller.signal.aborted) {
                 error =
                     cause instanceof Error
                         ? cause.message
-                        : "Assigned work items could not be loaded.";
+                        : "Work items could not be loaded.";
             }
         } finally {
             if (currentRequest === requestNumber) {
@@ -129,7 +168,8 @@
         void loadItems(
             organization,
             pat,
-            $azureDevOpsSettings.hideCompletedAndDone
+            $azureDevOpsSettings.hideCompletedAndDone,
+            kind
         );
     }
 
@@ -152,7 +192,7 @@
     onDestroy(() => activeController?.abort());
 </script>
 
-<Panel title="Assigned to me">
+<Panel title={kind === "assigned" ? "Assigned to me" : "Following"}>
     <div slot="actions" class="panel-actions">
         {#if useSampleData}
             <span
@@ -171,7 +211,7 @@
             type="button"
             on:click={refresh}
             disabled={loading}
-            aria-label="Refresh assigned work items"
+            aria-label={kind === "assigned" ? "Refresh assigned work items" : "Refresh followed work items"}
             title="Refresh"
         >
             ↻
@@ -179,14 +219,20 @@
     </div>
 
     {#if loading}
-        <p class="panel-message" aria-live="polite">Loading assigned work items…</p>
+        <p class="panel-message" aria-live="polite">
+            Loading {kind === "assigned" ? "assigned" : "followed"} work items…
+        </p>
     {:else if error}
         <p class="panel-message error" role="alert">{error}</p>
         <button class="retry-button" type="button" on:click={refresh}>
             Try again
         </button>
     {:else if items.length === 0}
-        <p class="panel-message">No open work items are assigned to you.</p>
+        <p class="panel-message">
+            {kind === "assigned"
+                ? "No open work items are assigned to you."
+                : "You are not following any open work items."}
+        </p>
     {:else}
         <div class="table-scroll">
             <table>
@@ -217,18 +263,21 @@
         </div>
         {#if items.length === MAX_WORK_ITEMS}
             <p class="list-note">
-                Showing the {MAX_WORK_ITEMS} most recently changed open items.
+                Showing the {MAX_WORK_ITEMS} most recently changed open items
+                {kind === "assigned" ? " assigned to you." : " you are following."}
             </p>
         {/if}
     {/if}
-    <label class="completed-filter">
-        Hide completed and done
-        <input
-            type="checkbox"
-            checked={$azureDevOpsSettings.hideCompletedAndDone}
-            on:change={updateCompletedFilter}
-        />
-    </label>
+    {#if kind === "assigned"}
+        <label class="completed-filter">
+            Hide completed and done
+            <input
+                type="checkbox"
+                checked={$azureDevOpsSettings.hideCompletedAndDone}
+                on:change={updateCompletedFilter}
+            />
+        </label>
+    {/if}
 </Panel>
 
 <style>

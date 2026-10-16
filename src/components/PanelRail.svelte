@@ -59,9 +59,17 @@
     }
 
     .panel-rail--left {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-content: start;
+        column-gap: 2rem;
+        row-gap: 1.5rem;
         grid-area: sidebar;
         width: max-content;
         max-width: calc(100vw - 25rem);
+        padding: 0;
+        background: transparent;
+        backdrop-filter: none;
     }
 
     .panel-rail--right {
@@ -76,6 +84,12 @@
         .panel-rail--left {
             width: auto;
             max-width: none;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .panel-rail--left {
+            grid-template-columns: minmax(0, 1fr);
         }
     }
 

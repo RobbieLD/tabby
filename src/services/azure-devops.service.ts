@@ -16,7 +16,46 @@ interface WorkItemsResponse {
     }>;
 }
 
+interface AccountMyWorkItem {
+    id?: number;
+    title?: string;
+    workItemType?: string;
+    state?: string;
+    teamProject?: string;
+    changedDate?: string;
+}
+
+interface AccountMyWorkResponse {
+    workItemDetails?: Array<AccountMyWorkItem | null>;
+}
+
 export const MAX_WORK_ITEMS = 100;
+// QueryOption.Followed in the Azure DevOps Account My Work API.
+const FOLLOWED_QUERY_OPTION = "3";
+
+const isVisibleWorkItemState = (
+    state: string,
+    hideCompletedAndDone: boolean
+): boolean => {
+    const hiddenStates = hideCompletedAndDone
+        ? ["closed", "done", "removed", "resolved", "completed"]
+        : ["closed", "removed", "resolved"];
+    return !hiddenStates.includes(state.toLowerCase());
+};
+
+const hasWorkItemId = (
+    item: AccountMyWorkItem | null
+): item is AccountMyWorkItem & { id: number } =>
+    Boolean(item && typeof item.id === "number" && Number.isInteger(item.id));
+
+const changedTime = (value?: string): number => {
+    if (!value) {
+        return 0;
+    }
+
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+};
 
 export const normalizeOrganization = (value: string): string => {
     const organization = value.trim();
@@ -116,21 +155,13 @@ export default class AzureDevOpsService {
 
         const workItems = result.value.map((item) => {
             const fields = item.fields || {};
-            const project = fields["System.TeamProject"] || "";
-            const itemPath = project
-                ? `/${encodeURIComponent(project)}`
-                : "";
-
-            return {
-                id: item.id,
-                title: fields["System.Title"] || "Untitled work item",
-                type: fields["System.WorkItemType"] || "Work item",
-                state: fields["System.State"] || "Unknown",
-                project,
-                url: `https://dev.azure.com/${encodeURIComponent(
-                    this.organization
-                )}${itemPath}/_workitems/edit/${item.id}`,
-            };
+            return this.toWorkItem(
+                item.id,
+                fields["System.Title"],
+                fields["System.WorkItemType"],
+                fields["System.State"],
+                fields["System.TeamProject"]
+            );
         });
         const itemsById = new Map(
             workItems.map((item) => [item.id, item] as [number, WorkItem])
@@ -143,6 +174,76 @@ export default class AzureDevOpsService {
             }
             return orderedItems;
         }, []);
+    }
+
+    public async getFollowedWorkItems(
+        signal?: AbortSignal,
+        hideCompletedAndDone = true
+    ): Promise<WorkItem[]> {
+        // Azure DevOps marks this My Work API internal-only; WIQL has no Followed macro.
+        const myWorkUrl = new URL(
+            `https://dev.azure.com/${encodeURIComponent(
+                this.organization
+            )}/_apis/work/accountMyWork`
+        );
+        myWorkUrl.searchParams.set("$queryOption", FOLLOWED_QUERY_OPTION);
+        myWorkUrl.searchParams.set("api-version", "7.1-preview.1");
+
+        const response = await this.request(myWorkUrl, { signal });
+        const result = (await response.json()) as AccountMyWorkResponse;
+        if (
+            !result ||
+            !Array.isArray(result.workItemDetails)
+        ) {
+            throw new Error("Azure DevOps returned invalid followed work item details.");
+        }
+
+        const itemsWithIds = result.workItemDetails.filter(hasWorkItemId);
+        if (itemsWithIds.length !== result.workItemDetails.length) {
+            throw new Error("Azure DevOps returned invalid followed work item details.");
+        }
+
+        return itemsWithIds
+            .filter((item) =>
+                isVisibleWorkItemState(item.state || "Unknown", hideCompletedAndDone)
+            )
+            .sort(
+                (left, right) =>
+                    changedTime(right.changedDate) - changedTime(left.changedDate)
+            )
+            .slice(0, MAX_WORK_ITEMS)
+            .map((item) =>
+                this.toWorkItem(
+                    item.id,
+                    item.title,
+                    item.workItemType,
+                    item.state,
+                    item.teamProject
+                )
+            );
+    }
+
+    private toWorkItem(
+        id: number,
+        title?: string,
+        type?: string,
+        state?: string,
+        project?: string
+    ): WorkItem {
+        const projectName = project || "";
+        const itemPath = projectName
+            ? `/${encodeURIComponent(projectName)}`
+            : "";
+        return {
+            id,
+            title: title || "Untitled work item",
+            type: type || "Work item",
+            state: state || "Unknown",
+            project: projectName,
+            url: `https://dev.azure.com/${encodeURIComponent(
+                this.organization
+            )}${itemPath}/_workitems/edit/${id}`,
+        };
     }
 
     private async request(url: URL, init: RequestInit): Promise<Response> {
