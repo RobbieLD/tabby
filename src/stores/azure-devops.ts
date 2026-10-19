@@ -6,6 +6,7 @@ import {
 export interface AzureDevOpsSettings {
     organization: string;
     pat: string;
+    teamName: string;
     enabled: boolean;
     hideCompletedAndDone: boolean;
 }
@@ -13,6 +14,7 @@ export interface AzureDevOpsSettings {
 interface StoredAzureDevOpsSettings {
     organization: string;
     pat: string;
+    teamName?: string;
     enabled: boolean;
     hideCompletedAndDone?: boolean;
 }
@@ -21,6 +23,7 @@ const STORAGE_KEY = "azure-devops-settings";
 const DEFAULT_SETTINGS: AzureDevOpsSettings = {
     organization: "",
     pat: "",
+    teamName: "",
     enabled: true,
     hideCompletedAndDone: true,
 };
@@ -33,12 +36,15 @@ const isSettings = (value: unknown): value is StoredAzureDevOpsSettings => {
     const candidate = value as {
         organization?: unknown;
         pat?: unknown;
+        teamName?: unknown;
         enabled?: unknown;
         hideCompletedAndDone?: unknown;
     };
     return (
         typeof candidate.organization === "string" &&
         typeof candidate.pat === "string" &&
+        (candidate.teamName === undefined ||
+            typeof candidate.teamName === "string") &&
         typeof candidate.enabled === "boolean" &&
         (candidate.hideCompletedAndDone === undefined ||
             typeof candidate.hideCompletedAndDone === "boolean")
@@ -60,6 +66,7 @@ const readSettings = (): AzureDevOpsSettings => {
         return {
             organization: normalizeOrganization(parsed.organization),
             pat: parsed.pat,
+            teamName: parsed.teamName?.trim() ?? "",
             enabled: parsed.enabled,
             hideCompletedAndDone:
                 parsed.hideCompletedAndDone ?? DEFAULT_SETTINGS.hideCompletedAndDone,
@@ -78,6 +85,7 @@ export const azureDevOpsSettings = {
         const nextSettings: AzureDevOpsSettings = {
             organization: normalizeOrganization(settings.organization),
             pat: settings.pat.trim(),
+            teamName: settings.teamName.trim(),
             enabled: settings.enabled,
             hideCompletedAndDone: settings.hideCompletedAndDone,
         };

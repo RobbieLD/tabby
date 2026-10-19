@@ -35,6 +35,7 @@
     let unsplashColor = background.getColor();
     let organization = $azureDevOpsSettings.organization;
     let personalAccessToken = $azureDevOpsSettings.pat;
+    let azureDevOpsTeamName = $azureDevOpsSettings.teamName;
     let showAssignedPanel = $azureDevOpsSettings.enabled;
     const usingLocalAzureDevOps =
         isLocalPreview() &&
@@ -203,12 +204,14 @@
             const savedSettings = azureDevOpsSettings.save({
                 organization: normalizedOrganization,
                 pat: normalizedPat,
+                teamName: azureDevOpsTeamName,
                 enabled: showAssignedPanel,
                 hideCompletedAndDone:
                     $azureDevOpsSettings.hideCompletedAndDone,
             });
             organization = savedSettings.organization;
             personalAccessToken = savedSettings.pat;
+            azureDevOpsTeamName = savedSettings.teamName;
 
             if (
                 !savedSettings.enabled ||
@@ -248,6 +251,7 @@
             azureDevOpsSettings.clear();
             organization = "";
             personalAccessToken = "";
+            azureDevOpsTeamName = "";
             showAssignedPanel = true;
         } catch (error) {
             adoMessage = messageFromError(error);
@@ -816,6 +820,20 @@
                             autocomplete="organization"
                         />
                     </label>
+                    <label class="field">
+                        Team name for current sprint
+                        <input
+                            type="text"
+                            bind:value={azureDevOpsTeamName}
+                            placeholder="Optional; defaults to each project's default team"
+                            autocomplete="organization-title"
+                        />
+                    </label>
+                    <p class="field-hint">
+                        This team name is used for the current-sprint lookup in each project
+                        shown in your assigned work items, so it must exist in each project.
+                        Leave it blank to use each project's default team.
+                    </p>
                     <label class="field">
                         Personal access token (PAT)
                         <input

@@ -5,6 +5,7 @@
     export let enabled = false;
     export let organization = "";
     export let pat = "";
+    export let teamName = "";
 </script>
 
 {#if enabled && organization && pat}
@@ -13,6 +14,7 @@
             <WorkItemsPanel
                 {organization}
                 {pat}
+                {teamName}
                 kind="assigned"
             />
         </div>
@@ -20,6 +22,7 @@
             <WorkItemsPanel
                 {organization}
                 {pat}
+                {teamName}
                 kind="followed"
             />
         </div>

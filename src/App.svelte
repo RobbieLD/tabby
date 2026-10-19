@@ -38,6 +38,7 @@
     $: panelPat = hasLocalAzureDevOpsCredentials
         ? localPreviewConfig.azureDevOpsPat
         : $azureDevOpsSettings.pat;
+    $: panelTeamName = $azureDevOpsSettings.teamName;
     $: showLeftPanels =
         hasLocalAzureDevOpsCredentials ||
         ($azureDevOpsSettings.enabled &&
@@ -158,6 +159,7 @@
             enabled={showLeftPanels}
             organization={panelOrganization}
             pat={panelPat}
+            teamName={panelTeamName}
         />
         {#if showWelcome}
             <WelcomePanel />

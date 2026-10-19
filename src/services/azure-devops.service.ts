@@ -29,9 +29,30 @@ interface AccountMyWorkResponse {
     workItemDetails?: Array<AccountMyWorkItem | null>;
 }
 
+interface TeamIterationsResponse {
+    values?: Array<TeamIterationResponse>;
+    value?: Array<TeamIterationResponse>;
+}
+
+interface TeamIterationResponse {
+    name?: string;
+    attributes?: {
+        startDate?: string | null;
+        finishDate?: string | null;
+    };
+}
+
+export interface ProjectCurrentIteration {
+    project: string;
+    name: string;
+    startDate?: string | null;
+    finishDate?: string | null;
+}
+
 export const MAX_WORK_ITEMS = 100;
 // QueryOption.Followed in the Azure DevOps Account My Work API.
 const FOLLOWED_QUERY_OPTION = "3";
+const CURRENT_ITERATION_TIMEFRAME = "current";
 
 const isVisibleWorkItemState = (
     state: string,
@@ -221,6 +242,93 @@ export default class AzureDevOpsService {
                     item.teamProject
                 )
             );
+    }
+
+    public async getCurrentIterations(
+        projects: string[],
+        teamName = "",
+        signal?: AbortSignal
+    ): Promise<ProjectCurrentIteration[]> {
+        const team = teamName.trim();
+        const uniqueProjects = Array.from(
+            new Set(projects.map((project) => project.trim()).filter(Boolean))
+        );
+        const iterationsByProject: ProjectCurrentIteration[][] = [];
+
+        for (let index = 0; index < uniqueProjects.length; index += 5) {
+            const projectBatch = uniqueProjects.slice(index, index + 5);
+            const batchIterations = await Promise.all(
+                projectBatch.map(async (project) => {
+                    const iterationsUrl = new URL(
+                        `https://dev.azure.com/${encodeURIComponent(
+                            this.organization
+                        )}/${encodeURIComponent(
+                            project
+                        )}${team ? `/${encodeURIComponent(team)}` : ""}/_apis/work/teamsettings/iterations`
+                    );
+                    iterationsUrl.searchParams.set(
+                        "$timeframe",
+                        CURRENT_ITERATION_TIMEFRAME
+                    );
+                    iterationsUrl.searchParams.set("api-version", "7.1");
+
+                    let response: Response;
+                    try {
+                        response = await this.request(iterationsUrl, { signal });
+                    } catch (cause) {
+                        if (signal?.aborted) {
+                            throw cause;
+                        }
+                        const teamDescription = team
+                            ? `team "${team}"`
+                            : "the project's default team";
+                        const detail =
+                            cause instanceof Error
+                                ? cause.message
+                                : "Unknown Azure DevOps error.";
+                        throw new Error(
+                            `Current iteration lookup for ${teamDescription} in project "${project}" failed: ${detail}`
+                        );
+                    }
+                    const result =
+                        (await response.json()) as TeamIterationsResponse;
+                    const iterations = result?.value ?? result?.values;
+                    if (!Array.isArray(iterations)) {
+                        throw new Error(
+                            `Azure DevOps returned invalid current iteration data for project "${project}".`
+                        );
+                    }
+
+                    return iterations.map((iteration) => {
+                        if (
+                            !iteration ||
+                            typeof iteration.name !== "string" ||
+                            !iteration.name.trim()
+                        ) {
+                            throw new Error(
+                                `Azure DevOps returned invalid current iteration data for project "${project}".`
+                            );
+                        }
+
+                        return {
+                            project,
+                            name: iteration.name.trim(),
+                            startDate: iteration.attributes?.startDate,
+                            finishDate: iteration.attributes?.finishDate,
+                        };
+                    });
+                })
+            );
+            iterationsByProject.push(...batchIterations);
+        }
+
+        return iterationsByProject.reduce<ProjectCurrentIteration[]>(
+            (allIterations, projectIterations) => {
+                allIterations.push(...projectIterations);
+                return allIterations;
+            },
+            []
+        );
     }
 
     private toWorkItem(

@@ -4,7 +4,10 @@
 
 <section class="panel">
     <header class="panel-header">
-        <h2>{title}</h2>
+        <div class="panel-heading">
+            <h2>{title}</h2>
+            <slot name="heading-details" />
+        </div>
         <div class="panel-actions">
             <slot name="actions" />
         </div>
@@ -24,10 +27,18 @@
 
     .panel-header {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
         gap: 0.75rem;
         padding: 0 0 0.75rem;
+    }
+
+    .panel-heading {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        min-width: 0;
     }
 
     h2 {
