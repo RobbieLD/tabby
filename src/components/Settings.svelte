@@ -45,6 +45,9 @@
     let shortcutMessageIsError = false;
     let backgroundMessage = "";
     let backgroundMessageIsError = false;
+    let backgroundRefreshStatus = "";
+    let backgroundRefreshStatusIsError = false;
+    let backgroundRefreshLoading = false;
     let adoMessage = "";
     let adoMessageIsError = false;
     let iconPermissionMessage = "";
@@ -428,6 +431,9 @@
     async function refreshBackground(): Promise<void> {
         backgroundMessage = "";
         backgroundMessageIsError = false;
+        backgroundRefreshStatus = "";
+        backgroundRefreshStatusIsError = false;
+        backgroundRefreshLoading = true;
 
         try {
             if (!unsplashKey.trim()) {
@@ -443,9 +449,14 @@
             unsplashColor = background.saveColor(unsplashColor);
             await background.refresh();
             backgroundMessage = "Background refreshed.";
+            backgroundRefreshStatus = backgroundMessage;
         } catch (error) {
             backgroundMessage = messageFromError(error);
             backgroundMessageIsError = true;
+            backgroundRefreshStatus = backgroundMessage;
+            backgroundRefreshStatusIsError = true;
+        } finally {
+            backgroundRefreshLoading = false;
         }
     }
 </script>
@@ -477,17 +488,38 @@
                 </a>
             </span>
         {/if}
+        {#if backgroundRefreshStatus}
+            <span
+                class="background-refresh-status"
+                class:error={backgroundRefreshStatusIsError}
+                aria-live="polite"
+            >
+                {backgroundRefreshStatus}
+            </span>
+        {/if}
     </div>
-    <button
-        class="settings-trigger"
-        type="button"
-        aria-label="Open settings"
-        aria-expanded={showSettingsPanel}
-        aria-controls="settings-panel"
-        on:click={openSettings}
-    >
-        <img src="images/settings.png" alt="" />
-    </button>
+    <div class="info-actions">
+        <button
+            class="background-refresh-trigger"
+            type="button"
+            aria-label={backgroundRefreshLoading ? "Refreshing background" : "Refresh background photo"}
+            title={backgroundRefreshLoading ? "Refreshing background" : "Refresh background photo"}
+            disabled={backgroundRefreshLoading}
+            on:click={refreshBackground}
+        >
+            <span class:refreshing={backgroundRefreshLoading} aria-hidden="true">↻</span>
+        </button>
+        <button
+            class="settings-trigger"
+            type="button"
+            aria-label="Open settings"
+            aria-expanded={showSettingsPanel}
+            aria-controls="settings-panel"
+            on:click={openSettings}
+        >
+            <img src="images/settings.png" alt="" />
+        </button>
+    </div>
 </div>
 
 <dialog
@@ -916,6 +948,41 @@
         color: inherit;
     }
 
+    .background-refresh-status {
+        flex: 0 1 auto;
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 0.68rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .background-refresh-status.error {
+        color: #ffd1d1;
+    }
+
+    .info-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .background-refresh-trigger {
+        display: grid;
+        place-items: center;
+        width: 2rem;
+        height: 2rem;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        color: white;
+        background: transparent;
+        cursor: pointer;
+        font: inherit;
+        font-size: 1.35rem;
+        line-height: 1;
+    }
+
     .settings-trigger {
         display: grid;
         place-items: center;
@@ -929,8 +996,25 @@
     }
 
     .settings-trigger:hover,
-    .settings-trigger:focus-visible {
+    .settings-trigger:focus-visible,
+    .background-refresh-trigger:hover:not(:disabled),
+    .background-refresh-trigger:focus-visible {
         background: rgba(255, 255, 255, 0.18);
+    }
+
+    .background-refresh-trigger:disabled {
+        cursor: wait;
+        opacity: 0.6;
+    }
+
+    .background-refresh-trigger .refreshing {
+        animation: refresh-spin 0.9s linear infinite;
+    }
+
+    @keyframes refresh-spin {
+        to {
+            transform: rotate(360deg);
+        }
     }
 
     .settings-trigger img {
