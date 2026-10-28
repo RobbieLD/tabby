@@ -230,6 +230,7 @@
         --theme-text-primary-rgb: 255, 255, 255;
         --theme-text-secondary-rgb: 230, 246, 251;
         --theme-text-accent-rgb: 198, 237, 249;
+        --surface-tint: #00000061;
         display: grid;
         grid-template-areas:
             "header"
@@ -259,6 +260,7 @@
         border: 0;
         border-bottom: 1px solid rgba(255, 255, 255, 0.14);
         border-radius: 0;
+        background: var(--surface-tint);
         box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.4);
         backdrop-filter: blur(20px);
     }
