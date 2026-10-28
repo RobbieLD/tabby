@@ -519,14 +519,14 @@
     .retry-button {
         border: 0;
         border-radius: 0.4rem;
-        color: white;
+        color: rgb(var(--theme-text-primary-rgb, 255, 255, 255));
         background: rgba(255, 255, 255, 0.14);
         cursor: pointer;
         font: inherit;
     }
 
     .preview-badge {
-        color: rgba(255, 255, 255, 0.72);
+        color: rgba(var(--theme-text-secondary-rgb, 230, 246, 251), 0.72);
         font-size: 0.65rem;
         letter-spacing: 0.04em;
         text-transform: uppercase;
@@ -538,7 +538,7 @@
         flex-wrap: wrap;
         gap: 0.3rem;
         min-width: 0;
-        color: rgba(230, 246, 251, 0.82);
+        color: rgba(var(--theme-text-secondary-rgb, 230, 246, 251), 0.82);
         font-size: 0.76rem;
         font-weight: 500;
         line-height: 1.4;
@@ -552,7 +552,7 @@
     .current-iteration-prefix,
     .current-iteration-status,
     .current-iteration-project {
-        color: rgba(230, 246, 251, 0.72);
+        color: rgba(var(--theme-text-secondary-rgb, 230, 246, 251), 0.72);
         font-size: 0.72rem;
         font-weight: 500;
     }
@@ -561,7 +561,7 @@
         padding: 0.05rem 0.35rem;
         border: 1px solid rgba(104, 223, 255, 0.42);
         border-radius: 0.35rem;
-        color: #68dfff;
+        color: rgb(var(--theme-text-accent-rgb, 104, 223, 255));
         background: rgba(67, 195, 231, 0.16);
         font-size: 0.86rem;
         font-weight: 700;
@@ -569,7 +569,7 @@
 
     .current-iteration-dates,
     .current-iteration-separator {
-        color: rgba(230, 246, 251, 0.7);
+        color: rgba(var(--theme-text-secondary-rgb, 230, 246, 251), 0.7);
         font-size: 0.72rem;
         font-weight: 400;
     }
@@ -598,7 +598,7 @@
         gap: 0.3rem;
         width: 100%;
         box-sizing: border-box;
-        color: rgba(255, 255, 255, 0.82);
+        color: rgba(var(--theme-text-secondary-rgb, 230, 246, 251), 0.82);
         font-size: 0.68rem;
         white-space: nowrap;
         margin-top: 1em;
@@ -659,7 +659,7 @@
         width: 100%;
         table-layout: auto;
         border-collapse: collapse;
-        color: #f5f7fa;
+        color: rgb(var(--theme-text-primary-rgb, 245, 247, 250));
         font-size: 0.8rem;
         text-align: left;
     }
@@ -674,7 +674,7 @@
     }
 
     th {
-        color: rgba(255, 255, 255, 0.72);
+        color: rgba(var(--theme-text-secondary-rgb, 230, 246, 251), 0.72);
         font-size: 0.68rem;
         letter-spacing: 0.04em;
         text-transform: uppercase;
@@ -686,13 +686,13 @@
     }
 
     .id-cell {
-        color: #f5f7fa;
+        color: rgb(var(--theme-text-primary-rgb, 245, 247, 250));
         white-space: nowrap;
         font-variant-numeric: tabular-nums;
     }
 
     .project-cell {
-        color: #f5f7fa;
+        color: rgb(var(--theme-text-primary-rgb, 245, 247, 250));
     }
 
     .title-cell,
@@ -701,7 +701,7 @@
     }
 
     a {
-        color: #c6edf9;
+        color: rgb(var(--theme-text-accent-rgb, 198, 237, 249));
         text-decoration: none;
     }
 
@@ -712,7 +712,7 @@
     .work-item-type {
         display: block;
         margin-bottom: 0.15rem;
-        color: rgba(255, 255, 255, 0.7);
+        color: rgba(var(--theme-text-secondary-rgb, 230, 246, 251), 0.7);
         font-size: 0.68rem;
     }
 
@@ -726,7 +726,7 @@
 
     .list-note {
         margin: 0.65rem 0 0;
-        color: rgba(255, 255, 255, 0.72);
+        color: rgba(var(--theme-text-secondary-rgb, 230, 246, 251), 0.72);
         font-size: 0.72rem;
     }
 </style>

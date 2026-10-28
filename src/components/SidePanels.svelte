@@ -33,10 +33,11 @@
     .panel-card {
         box-sizing: border-box;
         min-width: 0;
-        padding: 1rem;
+        padding: 0;
         border: 1px solid rgba(255, 255, 255, 0.14);
-        border-radius: 0.6rem;
+        border-radius: 0;
         background: rgba(0, 0, 0, 0.2);
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.4);
         backdrop-filter: blur(16px);
     }
 </style>

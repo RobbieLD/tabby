@@ -21,7 +21,7 @@
         min-height: 0;
         margin: 2em;
         padding: 1rem;
-        color: white;
+        color: rgb(var(--theme-text-primary-rgb, 255, 255, 255));
         background: rgba(0, 0, 0, 0.2);
         backdrop-filter: blur(16px);
         overflow-x: hidden;

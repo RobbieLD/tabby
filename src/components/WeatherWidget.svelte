@@ -162,7 +162,6 @@
 <aside class="weather-widget" aria-label="Current weather" aria-live="polite">
     {#if isPreviewMode}
         <div class="weather-copy">
-            <span class="weather-location">Sample weather</span>
             <div class="weather-reading">
                 <strong>18°C</strong>
                 <span>Partly cloudy</span>
@@ -172,7 +171,16 @@
     {:else if $weatherLocation}
         <div class="weather-copy">
             <div class="weather-topline">
-                <span class="weather-location">{$weatherLocation.name}</span>
+                {#if loading && !current}
+                    <span class="weather-status">Loading weather…</span>
+                {:else if error && !current}
+                    <span class="weather-error" role="alert">{error}</span>
+                {:else if current}
+                    <div class="weather-reading">
+                        <strong>{Math.round(current.temperature)}°C</strong>
+                        <span>{describeWeather(current.weatherCode)}</span>
+                    </div>
+                {/if}
                 <button
                     class="weather-refresh"
                     type="button"
@@ -184,76 +192,36 @@
                     ↻
                 </button>
             </div>
-            {#if loading && !current}
-                <span class="weather-status">Loading weather…</span>
-            {:else if error && !current}
-                <span class="weather-error" role="alert">{error}</span>
-            {:else if current}
-                <div class="weather-reading">
-                    <strong>{Math.round(current.temperature)}°C</strong>
-                    <span>{describeWeather(current.weatherCode)}</span>
-                </div>
+            {#if current}
                 <span class="weather-details">
                     Feels like {Math.round(current.apparentTemperature)}° · Wind {Math.round(current.windSpeed)} km/h
                 </span>
-                {#if error}
-                    <span class="weather-status">{error}</span>
-                {/if}
+            {/if}
+            {#if error && current}
+                <span class="weather-status">{error}</span>
             {/if}
         </div>
     {:else}
         <div class="weather-copy">
-            <span class="weather-location">Current weather</span>
             <button class="weather-setup" type="button" on:click={openSettings}>
-                Choose a location in Settings
+                Set weather location
             </button>
         </div>
     {/if}
-    <div class="weather-attribution-row">
-        <a
-            class="weather-attribution"
-            href="https://open-meteo.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Weather and geocoding API by Open-Meteo"
-        >
-            Open-Meteo
-        </a>
-        <span class="attribution-separator" aria-hidden="true">·</span>
-        <a
-            class="weather-attribution"
-            href="https://www.geonames.org/"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Geocoding place data by GeoNames"
-        >
-            GeoNames
-        </a>
-        <span class="attribution-separator" aria-hidden="true">·</span>
-        <a
-            class="weather-attribution"
-            href="https://creativecommons.org/licenses/by/4.0/"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Open-Meteo data licence: Creative Commons Attribution 4.0"
-        >
-            CC BY 4.0
-        </a>
-    </div>
 </aside>
 
 <style>
     .weather-widget {
-        grid-area: weather;
         justify-self: end;
+        align-self: center;
         display: flex;
         flex-direction: column;
         align-items: flex-end;
         gap: 0.15rem;
         min-width: 0;
-        max-width: min(20rem, 45vw);
-        padding: 0.55rem 1rem 0.55rem 0.4rem;
-        color: white;
+        max-width: min(24rem, 42vw);
+        padding: 0;
+        color: rgb(var(--theme-text-primary-rgb, 255, 255, 255));
         text-align: right;
     }
 
@@ -274,15 +242,8 @@
         min-width: 0;
     }
 
-    .weather-location {
-        color: rgba(255, 255, 255, 0.88);
-        font-size: 0.88rem;
-        font-weight: 600;
-        overflow-wrap: anywhere;
-    }
-
     .weather-reading strong {
-        font-size: 2.2rem;
+        font-size: 2rem;
         line-height: 1;
         white-space: nowrap;
     }
@@ -293,15 +254,19 @@
 
     .weather-details,
     .weather-status {
-        color: rgba(255, 255, 255, 0.72);
-        font-size: 0.76rem;
+        color: rgba(var(--theme-text-secondary-rgb, 230, 246, 251), 0.72);
+        font-size: 0.72rem;
+    }
+
+    .weather-status,
+    .weather-error {
+        max-width: 18rem;
+        overflow-wrap: anywhere;
     }
 
     .weather-error {
-        max-width: 18rem;
         color: #ffd1d1;
         font-size: 0.68rem;
-        overflow-wrap: anywhere;
     }
 
     .weather-refresh {
@@ -310,7 +275,7 @@
         padding: 0;
         border: 0;
         border-radius: 50%;
-        color: white;
+        color: rgb(var(--theme-text-primary-rgb, 255, 255, 255));
         background: transparent;
         cursor: pointer;
         font: inherit;
@@ -328,8 +293,7 @@
     }
 
     .weather-refresh:focus-visible,
-    .weather-setup:focus-visible,
-    .weather-attribution:focus-visible {
+    .weather-setup:focus-visible {
         outline: 2px solid #c6edf9;
         outline-offset: 2px;
     }
@@ -337,7 +301,7 @@
     .weather-setup {
         padding: 0;
         border: 0;
-        color: #c6edf9;
+        color: rgb(var(--theme-text-accent-rgb, 198, 237, 249));
         background: transparent;
         cursor: pointer;
         font: inherit;
@@ -345,27 +309,13 @@
         text-align: right;
     }
 
-    .weather-setup:hover,
-    .weather-attribution:hover {
+    .weather-setup:hover {
         text-decoration: underline;
     }
 
-    .weather-attribution {
-        color: rgba(255, 255, 255, 0.6);
-        font-size: 0.58rem;
-        text-decoration: none;
-    }
-
-    .weather-attribution-row {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        flex-wrap: wrap;
-        gap: 0.3rem;
-    }
-
-    .attribution-separator {
-        color: rgba(255, 255, 255, 0.5);
-        font-size: 0.58rem;
+    @media (max-width: 820px) {
+        .weather-widget {
+            max-width: 100%;
+        }
     }
 </style>

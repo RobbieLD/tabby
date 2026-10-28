@@ -90,6 +90,7 @@ export default class UnsplashService {
 
         return {
             url: `url("${imageUrl}")`,
+            imageUrl,
             description: photo.description || photo.alt_description || "Unsplash photo",
             photographerName,
             photographerUrl: photographerUrl.toString(),

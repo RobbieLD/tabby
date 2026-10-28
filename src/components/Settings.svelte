@@ -1,4 +1,5 @@
 <script lang="ts">
+    import Clock from "./Clock.svelte";
     import { background } from "../stores/background";
     import { icons } from "../stores/icons";
     import { azureDevOpsSettings } from "../stores/azure-devops";
@@ -464,39 +465,42 @@
 <svelte:window on:open-settings={openSettings} />
 
 <div class="info">
-    <div class="image-credit">
-        <span class="background-description">
-            {$background.error || $background.description}
-        </span>
-        {#if !$background.error && $background.photographerName && $background.photographerUrl}
-            <span class="photo-attribution">
-                Photo by
-                <a
-                    href={$background.photographerUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                    {$background.photographerName}
-                </a>
-                on
-                <a
-                    href="https://unsplash.com/?utm_source=tabby&utm_medium=referral"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                    Unsplash
-                </a>
+    <div class="info-content">
+        <div class="image-credit">
+            <span class="background-description">
+                {$background.error || $background.description}
             </span>
-        {/if}
-        {#if backgroundRefreshStatus}
-            <span
-                class="background-refresh-status"
-                class:error={backgroundRefreshStatusIsError}
-                aria-live="polite"
-            >
-                {backgroundRefreshStatus}
-            </span>
-        {/if}
+            {#if !$background.error && $background.photographerName && $background.photographerUrl}
+                <span class="photo-attribution">
+                    Photo by
+                    <a
+                        href={$background.photographerUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        {$background.photographerName}
+                    </a>
+                    on
+                    <a
+                        href="https://unsplash.com/?utm_source=tabby&utm_medium=referral"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Unsplash
+                    </a>
+                </span>
+            {/if}
+            {#if backgroundRefreshStatus}
+                <span
+                    class="background-refresh-status"
+                    class:error={backgroundRefreshStatusIsError}
+                    aria-live="polite"
+                >
+                    {backgroundRefreshStatus}
+                </span>
+            {/if}
+        </div>
+        <Clock />
     </div>
     <div class="info-actions">
         <button
@@ -753,6 +757,23 @@
                 wind speeds are in km/h.
             </p>
             <p class="field-hint">
+                Weather data by
+                <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">
+                    Open-Meteo
+                </a>
+                under
+                <a
+                    href="https://creativecommons.org/licenses/by/4.0/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    CC BY 4.0
+                </a>; place-name search by
+                <a href="https://www.geonames.org/" target="_blank" rel="noopener noreferrer"                >
+                    GeoNames
+                </a>.
+            </p>
+            <p class="field-hint">
                 Tabby never requests your device location. Your search is sent to Open-Meteo
                 to find matching places; the selected coordinates are saved in this browser
                 and sent to Open-Meteo for weather. Your browser may ask for Open-Meteo
@@ -915,14 +936,27 @@
 <style>
     .info {
         grid-area: info;
+        box-sizing: border-box;
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
         align-items: center;
         gap: 1rem;
         padding: 0.5rem 0.75rem;
-        color: white;
+        border: 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 0;
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.4);
+        color: rgb(var(--theme-text-primary-rgb, 255, 255, 255));
         font-size: 0.75rem;
         backdrop-filter: blur(20px);
+    }
+
+    .info-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        min-width: 0;
     }
 
     .image-credit {
@@ -930,10 +964,12 @@
         align-items: center;
         gap: 0.45rem;
         min-width: 0;
+        flex: 1 1 auto;
     }
 
     .background-description {
         min-width: 0;
+        color: rgba(var(--theme-text-secondary-rgb, 230, 246, 251), 0.82);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -941,6 +977,7 @@
 
     .photo-attribution {
         flex: 0 0 auto;
+        color: rgba(var(--theme-text-secondary-rgb, 230, 246, 251), 0.82);
         white-space: nowrap;
     }
 
@@ -950,7 +987,7 @@
 
     .background-refresh-status {
         flex: 0 1 auto;
-        color: rgba(255, 255, 255, 0.82);
+        color: rgba(var(--theme-text-secondary-rgb, 230, 246, 251), 0.82);
         font-size: 0.68rem;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -975,7 +1012,7 @@
         padding: 0;
         border: 0;
         border-radius: 50%;
-        color: white;
+        color: rgb(var(--theme-text-primary-rgb, 255, 255, 255));
         background: transparent;
         cursor: pointer;
         font: inherit;
@@ -1019,6 +1056,8 @@
 
     .settings-trigger img {
         width: 1.4rem;
+        filter: var(--settings-icon-filter);
+        transition: filter 0.2s;
     }
 
     .settings-modal {
@@ -1291,6 +1330,12 @@
     }
 
     @media (max-width: 520px) {
+        .info-content {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0.25rem;
+        }
+
         .settings-content {
             padding-right: 1rem;
             padding-left: 1rem;

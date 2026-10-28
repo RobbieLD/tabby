@@ -1,6 +1,5 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import Clock from "./components/Clock.svelte";
     import SidePanels from "./components/SidePanels.svelte";
     import Settings from "./components/Settings.svelte";
     import WeatherWidget from "./components/WeatherWidget.svelte";
@@ -14,6 +13,9 @@
         hasWebsiteActivityAccess,
         websiteActivityAccess,
     } from "./services/extension-permissions";
+
+    const menuIconFilter = `url("${new URL("#menu-icon-monochrome", window.location.href).href}")`;
+    const settingsIconFilter = `url("${new URL("#menu-icon-alpha-tint", window.location.href).href}")`;
 
     background.init(localPreviewConfig.unsplashAccessKey).catch((error: unknown) => {
         console.error("Unable to load the Unsplash background.", error);
@@ -114,41 +116,88 @@
     class="main"
     style:background-image={$background.url ||
         "linear-gradient(135deg, #111b27 0%, #1d3444 55%, #253b49 100%)"}
+    style:--theme-text-primary-rgb={$background.textPalette?.primaryRgb ??
+        "255, 255, 255"}
+    style:--theme-text-secondary-rgb={$background.textPalette?.secondaryRgb ??
+        "230, 246, 251"}
+    style:--theme-text-accent-rgb={$background.textPalette?.accentRgb ??
+        "198, 237, 249"}
+    style:--menu-icon-filter={menuIconFilter}
+    style:--settings-icon-filter={settingsIconFilter}
 >
+    <svg class="icon-filters" aria-hidden="true" focusable="false">
+        <defs>
+            <filter
+                id="menu-icon-monochrome"
+                color-interpolation-filters="sRGB"
+            >
+                <feColorMatrix
+                    in="SourceGraphic"
+                    type="matrix"
+                    values="0 0 0 0 0
+                        0 0 0 0 0
+                        0 0 0 0 0
+                        -0.2126 -0.7152 -0.0722 1 0"
+                    result="icon-mask"
+                />
+                <feFlood flood-color="currentColor" result="icon-color" />
+                <feComposite in="icon-color" in2="icon-mask" operator="in" />
+            </filter>
+            <filter
+                id="menu-icon-alpha-tint"
+                color-interpolation-filters="sRGB"
+            >
+                <feColorMatrix
+                    in="SourceGraphic"
+                    type="matrix"
+                    values="0 0 0 0 0
+                        0 0 0 0 0
+                        0 0 0 0 0
+                        0 0 0 1 0"
+                    result="icon-mask"
+                />
+                <feFlood flood-color="currentColor" result="icon-color" />
+                <feComposite in="icon-color" in2="icon-mask" operator="in" />
+            </filter>
+        </defs>
+    </svg>
     <header class="header">
-        <nav class="content" aria-label="Shortcuts">
-            <span id="shortcut-reorder-help" class="visually-hidden">
-                Drag to reorder this shortcut. You can also move shortcuts with the
-                controls in Settings.
-            </span>
-            {#each $icons as icon, index}
-                <a
-                    class="shortcut-link"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    href={icon.url}
-                    title={icon.title}
-                    aria-label={icon.title}
-                    aria-describedby="shortcut-reorder-help"
-                    draggable="true"
-                    class:is-dragging={draggedShortcutIndex === index}
-                    class:drop-target={dragTargetIndex === index && draggedShortcutIndex !== index}
-                    on:dragstart={(event) => startDraggingShortcut(event, index)}
-                    on:dragover={(event) => allowShortcutDrop(event, index)}
-                    on:drop={(event) => dropShortcut(event, index)}
-                    on:dragend={finishDraggingShortcut}
-                    on:click={openShortcut}
-                >
-                    {#if !isRemoteIcon(icon.icon) || $websiteActivityAccess}
-                        <img src={icon.icon} alt={icon.title} class="icon" />
-                    {:else}
-                        <span class="icon icon-placeholder" aria-hidden="true">
-                            {icon.title.charAt(0).toUpperCase()}
-                        </span>
-                    {/if}
-                </a>
-            {/each}
-        </nav>
+        <div class="top-bar">
+            <nav class="content" aria-label="Shortcuts">
+                <span id="shortcut-reorder-help" class="visually-hidden">
+                    Drag to reorder this shortcut. You can also move shortcuts with the
+                    controls in Settings.
+                </span>
+                {#each $icons as icon, index}
+                    <a
+                        class="shortcut-link"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        href={icon.url}
+                        title={icon.title}
+                        aria-label={icon.title}
+                        aria-describedby="shortcut-reorder-help"
+                        draggable="true"
+                        class:is-dragging={draggedShortcutIndex === index}
+                        class:drop-target={dragTargetIndex === index && draggedShortcutIndex !== index}
+                        on:dragstart={(event) => startDraggingShortcut(event, index)}
+                        on:dragover={(event) => allowShortcutDrop(event, index)}
+                        on:drop={(event) => dropShortcut(event, index)}
+                        on:dragend={finishDraggingShortcut}
+                        on:click={openShortcut}
+                    >
+                        {#if !isRemoteIcon(icon.icon) || $websiteActivityAccess}
+                            <img src={icon.icon} alt={icon.title} class="icon" />
+                        {:else}
+                            <span class="icon icon-placeholder" aria-hidden="true">
+                                {icon.title.charAt(0).toUpperCase()}
+                            </span>
+                        {/if}
+                    </a>
+                {/each}
+            </nav>
+            <WeatherWidget />
+        </div>
     </header>
     <div
         class="workspace"
@@ -164,8 +213,6 @@
         {#if showWelcome}
             <WelcomePanel />
         {/if}
-        <WeatherWidget />
-        <Clock />
     </div>
     <Settings />
 </div>
@@ -180,6 +227,9 @@
     }
 
     .main {
+        --theme-text-primary-rgb: 255, 255, 255;
+        --theme-text-secondary-rgb: 230, 246, 251;
+        --theme-text-accent-rgb: 198, 237, 249;
         display: grid;
         grid-template-areas:
             "header"
@@ -195,10 +245,22 @@
 
     .header {
         grid-area: header;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr);
-        align-items: start;
         min-width: 0;
+    }
+
+    .top-bar {
+        box-sizing: border-box;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 1rem;
+        min-width: 0;
+        padding: 0.5em 1em;
+        border: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 0;
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(20px);
     }
 
     .content {
@@ -206,9 +268,15 @@
         display: grid;
         grid-auto-flow: column;
         gap: 1em;
-        padding: 0.5em 1em;
-        backdrop-filter: blur(20px);
-        grid-template-columns: repeat(auto-fill, minmax(2em, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(2.75em, 1fr));
+    }
+
+    .icon-filters {
+        position: absolute;
+        width: 0;
+        height: 0;
+        overflow: hidden;
+        color: rgb(var(--theme-text-primary-rgb, 255, 255, 255));
     }
 
     .shortcut-link {
@@ -240,36 +308,33 @@
     .workspace {
         grid-area: workspace;
         display: grid;
-        grid-template-areas:
-            ". . weather"
-            ". . clock";
-        grid-template-columns: auto minmax(0, 1fr) auto;
-        grid-template-rows: auto minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr);
         min-width: 0;
         min-height: 0;
         overflow: hidden;
     }
 
     .workspace.has-left-panel {
-        grid-template-areas:
-            "sidebar . weather"
-            "sidebar . clock";
-        grid-template-columns: max-content minmax(0, 1fr) auto;
+        grid-template-areas: "sidebar .";
+        grid-template-columns: max-content minmax(0, 1fr);
     }
 
     .workspace.show-welcome {
-        grid-template-areas:
-            ". welcome weather"
-            ". welcome clock";
+        grid-template-areas: ". welcome .";
         grid-template-columns: auto minmax(0, 1fr) auto;
     }
 
     .icon {
-        max-width: 2em;
-        filter: grayscale(100%);
-        mix-blend-mode: multiply;
         cursor: pointer;
-        transition: transform 0.2s;
+        transition: filter 0.2s, transform 0.2s;
+    }
+
+    .shortcut-link img.icon {
+        width: 2.6em;
+        height: 2.6em;
+        object-fit: contain;
+        filter: var(--menu-icon-filter);
     }
 
     .visually-hidden {
@@ -284,7 +349,9 @@
         border: 0;
     }
 
-    .icon:hover {
+    .icon:hover,
+    .shortcut-link:hover .icon,
+    .shortcut-link:focus-visible .icon {
         filter: none;
         transform: scale(2) translateY(0.5em);
     }
@@ -292,33 +359,32 @@
     .icon-placeholder {
         display: inline-grid;
         place-items: center;
-        width: 2em;
-        height: 2em;
+        width: 2.6rem;
+        height: 2.6rem;
         border-radius: 0.35em;
-        color: white;
+        color: rgb(var(--theme-text-primary-rgb, 255, 255, 255));
         background: rgba(0, 0, 0, 0.22);
-        font-size: 0.8rem;
+        font-size: 0.9rem;
         font-weight: 600;
     }
 
     @media (max-width: 820px) {
-        .workspace.has-left-panel {
-            grid-template-areas:
-                "sidebar"
-                "weather"
-                "clock";
+        .top-bar {
             grid-template-columns: minmax(0, 1fr);
-            grid-template-rows: auto auto minmax(0, 1fr);
+            gap: 0.5rem;
+        }
+
+        .workspace.has-left-panel {
+            grid-template-areas: "sidebar";
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: auto;
             overflow-y: auto;
         }
 
         .workspace.show-welcome {
-            grid-template-areas:
-                "welcome"
-                "weather"
-                "clock";
+            grid-template-areas: "welcome";
             grid-template-columns: minmax(0, 1fr);
-            grid-template-rows: auto auto minmax(0, 1fr);
+            grid-template-rows: minmax(0, 1fr);
             overflow-y: auto;
         }
 

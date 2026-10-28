@@ -22,7 +22,7 @@
         display: flex;
         flex-direction: column;
         min-width: 0;
-        color: #f5f7fa;
+        color: rgb(var(--theme-text-primary-rgb, 245, 247, 250));
     }
 
     .panel-header {
@@ -30,7 +30,10 @@
         align-items: flex-start;
         justify-content: space-between;
         gap: 0.75rem;
-        padding: 0 0 0.75rem;
+        margin-bottom: 0.75rem;
+        padding: 0.7rem 1rem;
+        border-radius: 0;
+        background: rgba(0, 0, 0, 0.55);
     }
 
     .panel-heading {
@@ -55,6 +58,6 @@
 
     .panel-body {
         min-width: 0;
-        padding-top: 0.75rem;
+        padding: 0 1rem 1rem;
     }
 </style>

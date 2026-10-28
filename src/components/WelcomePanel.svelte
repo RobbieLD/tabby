@@ -31,7 +31,7 @@
         padding: clamp(1.5rem, 4vw, 2.75rem);
         border: 1px solid rgba(255, 255, 255, 0.18);
         border-radius: 1rem;
-        color: #f5f8fb;
+        color: rgb(var(--theme-text-primary-rgb, 245, 248, 251));
         background: rgba(9, 18, 28, 0.58);
         box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.18);
         backdrop-filter: blur(14px);
@@ -39,7 +39,7 @@
 
     .eyebrow {
         margin: 0 0 0.65rem;
-        color: #b7d9e8;
+        color: rgb(var(--theme-text-accent-rgb, 183, 217, 232));
         font-size: 0.7rem;
         font-weight: 700;
         letter-spacing: 0.12em;
@@ -53,7 +53,7 @@
 
     .welcome-copy {
         margin: 0.85rem 0 0;
-        color: rgba(245, 248, 251, 0.84);
+        color: rgba(var(--theme-text-secondary-rgb, 245, 248, 251), 0.84);
         line-height: 1.55;
     }
 
@@ -62,7 +62,7 @@
         gap: 0.4rem;
         margin: 1rem 0 1.25rem;
         padding-left: 1.3rem;
-        color: rgba(245, 248, 251, 0.9);
+        color: rgba(var(--theme-text-secondary-rgb, 245, 248, 251), 0.9);
         line-height: 1.5;
     }
 

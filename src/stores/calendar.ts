@@ -17,8 +17,11 @@ export const time = derived(
 
 export const date = derived(
     now,
-    $time => convertDay($time.getDay()) + ' ' +
-        $time.getDate() + '<span style="font-variant: super;">' +
-        convertOrdinal($time.getDate()) + '</span> of ' +
-        convertMonth($time.getMonth()) + ' ' + $time.getFullYear()
+    $time => ({
+        weekday: convertDay($time.getDay()),
+        day: $time.getDate(),
+        ordinal: convertOrdinal($time.getDate()),
+        month: convertMonth($time.getMonth()),
+        year: $time.getFullYear(),
+    })
 );

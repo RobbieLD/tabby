@@ -3,21 +3,32 @@ import UnsplashService, {
     isUnsplashColor,
 } from "../services/unsplash.service";
 import type { UnsplashColor } from "../services/unsplash.service";
+import {
+    getBackgroundTextPalette,
+    type BackgroundTextPalette,
+} from "../services/image-text-palette.service";
 import { writable } from "svelte/store";
 import type UnsplashResponse from "../models/unsplash-response";
 import { hasAuthenticationInfoAccess } from "../services/extension-permissions";
 
 const setCache = (response: UnsplashResponse) => {
     window.localStorage.setItem("url", response.url);
+    window.localStorage.setItem("imageUrl", response.imageUrl);
     window.localStorage.setItem("description", response.description);
     window.localStorage.setItem("photographer", response.photographerName);
     window.localStorage.setItem("photographerUrl", response.photographerUrl);
     window.localStorage.setItem("hour", new Date().getHours().toString());
 };
 
+interface BackgroundState extends UnsplashResponse {
+    error: string;
+    textPalette: BackgroundTextPalette | null;
+}
+
 const NO_BACKGROUND: UnsplashResponse = {
     description: "Add an Unsplash access key in settings to enable backgrounds.",
     url: "",
+    imageUrl: "",
     photographerName: "",
     photographerUrl: "",
 };
@@ -29,11 +40,13 @@ const normalizeSearchTerms = (value: string): string =>
     value.trim() || DEFAULT_SEARCH_TERMS;
 
 const createBackground = () => {
-    const { subscribe, update, set } = writable({
+    const { subscribe, update, set } = writable<BackgroundState>({
         ...NO_BACKGROUND,
         error: "",
+        textPalette: null,
     });
     let localPreviewKey = "";
+    let textPaletteRequestNumber = 0;
     const getSearchTerms = (): string =>
         normalizeSearchTerms(
             window.localStorage.getItem(SEARCH_TERMS_STORAGE_KEY) || ""
@@ -45,12 +58,62 @@ const createBackground = () => {
             : DEFAULT_UNSPLASH_COLOR;
     };
 
+    const getImageUrlFromBackground = (backgroundUrl: string): string => {
+        const value = backgroundUrl.trim();
+        if (!value.toLowerCase().startsWith("url(") || !value.endsWith(")")) {
+            return "";
+        }
+
+        const imageUrl = value.slice(4, -1).trim();
+        const quote = imageUrl[0];
+        return (
+            (quote === '"' || quote === "'") && imageUrl.endsWith(quote)
+                ? imageUrl.slice(1, -1)
+                : imageUrl
+        );
+    };
+
+    const applyTextPalette = async (
+        imageUrl: string,
+        backgroundUrl: string
+    ): Promise<void> => {
+        if (!imageUrl) {
+            return;
+        }
+
+        const currentRequest = ++textPaletteRequestNumber;
+        try {
+            const textPalette = await getBackgroundTextPalette(imageUrl);
+            if (!textPalette) {
+                console.warn(
+                    "The Unsplash background did not produce usable text colors."
+                );
+                return;
+            }
+
+            update((current) =>
+                currentRequest === textPaletteRequestNumber &&
+                current.url === backgroundUrl
+                    ? { ...current, textPalette }
+                    : current
+            );
+        } catch (error) {
+            if (currentRequest === textPaletteRequestNumber) {
+                console.warn(
+                    "The text palette could not be extracted from the Unsplash background.",
+                    error
+                );
+            }
+        }
+    };
+
     const load = async (key: string): Promise<UnsplashResponse> => {
         try {
             const service = new UnsplashService(key, getSearchTerms(), getColor());
             const response = await service.get();
             setCache(response);
-            set({ ...response, error: "" });
+            set({ ...response, error: "", textPalette: null });
+            await applyTextPalette(response.imageUrl, response.url);
             return response;
         } catch (error) {
             const message =
@@ -99,11 +162,13 @@ const createBackground = () => {
             localPreviewKey = "";
             window.localStorage.removeItem("unsplash");
             window.localStorage.removeItem("url");
+            window.localStorage.removeItem("imageUrl");
             window.localStorage.removeItem("description");
             window.localStorage.removeItem("photographer");
             window.localStorage.removeItem("photographerUrl");
             window.localStorage.removeItem("hour");
-            set({ ...NO_BACKGROUND, error: "" });
+            textPaletteRequestNumber += 1;
+            set({ ...NO_BACKGROUND, error: "", textPalette: null });
         },
         init: async (localKey = "") => {
             localPreviewKey = localKey.trim();
@@ -111,11 +176,15 @@ const createBackground = () => {
                 localPreviewKey || window.localStorage.getItem("unsplash") || "";
             const hour = window.localStorage.getItem("hour");
             if (!key) {
-                set({ ...NO_BACKGROUND, error: "" });
+                textPaletteRequestNumber += 1;
+                set({ ...NO_BACKGROUND, error: "", textPalette: null });
                 return;
             }
 
             const cachedUrl = window.localStorage.getItem("url") || "";
+            const cachedImageUrl =
+                window.localStorage.getItem("imageUrl") ||
+                getImageUrlFromBackground(cachedUrl);
             const cacheDescription = window.localStorage.getItem("description") || "";
             const cachedPhotographer = window.localStorage.getItem("photographer") || "";
             const cachedPhotographerUrl =
@@ -125,10 +194,13 @@ const createBackground = () => {
                 set({
                     description: cacheDescription,
                     url: cachedUrl,
+                    imageUrl: cachedImageUrl,
                     photographerName: cachedPhotographer,
                     photographerUrl: cachedPhotographerUrl,
                     error: "",
+                    textPalette: null,
                 });
+                void applyTextPalette(cachedImageUrl, cachedUrl);
             }
 
             if (

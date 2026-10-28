@@ -11,6 +11,7 @@
         "node": ">=20"
     },
     "dependencies": {
+        "node-vibrant": "^4.0.4",
         "svelte": "^5.57.1"
     },
     "devDependencies": {
