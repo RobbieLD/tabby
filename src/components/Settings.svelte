@@ -3,9 +3,12 @@
     import { background } from "../stores/background";
     import { icons } from "../stores/icons";
     import { azureDevOpsSettings } from "../stores/azure-devops";
+    import { sportsSettings } from "../stores/sports";
     import { weatherLocation } from "../stores/weather";
+    import type { SportsKind, SportsTeam } from "../models/sports";
     import type { WeatherLocation } from "../models/weather";
     import { normalizeOrganization } from "../services/azure-devops.service";
+    import { searchSportsTeams as searchSportsProvider } from "../services/sports.service";
     import { UNSPLASH_COLOR_OPTIONS } from "../services/unsplash.service";
     import { searchWeatherLocations } from "../services/weather.service";
     import { isLocalPreview, localPreviewConfig } from "../utils/environment";
@@ -13,10 +16,12 @@
         removeAzureDevOpsAccess,
         removeAuthenticationInfoAccess,
         removeWeatherAccess,
+        removeSportsDataAccess,
         removeUnsplashAccess,
         requestWebsiteActivityAccess,
         requestAzureDevOpsAccess,
         requestWeatherAccess,
+        requestSportsDataAccess,
         requestUnsplashAccess,
         websiteActivityAccess,
     } from "../services/extension-permissions";
@@ -58,6 +63,16 @@
     let weatherPlaceQuery = $weatherLocation?.name || "";
     let weatherSearchResults: WeatherLocation[] = [];
     let weatherSearching = false;
+    let footballTeamQuery = $sportsSettings.football?.name || "";
+    let cricketTeamQuery = $sportsSettings.cricket?.name || "";
+    let footballSearchResults: SportsTeam[] = [];
+    let cricketSearchResults: SportsTeam[] = [];
+    let footballSearching = false;
+    let cricketSearching = false;
+    let footballMessage = "";
+    let footballMessageIsError = false;
+    let cricketMessage = "";
+    let cricketMessageIsError = false;
     $: reorderIconIndex = $icons.findIndex(
         (icon) => icon.title === reorderIconTitle
     );
@@ -366,6 +381,166 @@
         }
     }
 
+    async function findSportsTeams(
+        sport: SportsKind,
+        query: string
+    ): Promise<SportsTeam[]> {
+        const searchTerm = query.trim();
+        if (searchTerm.length < 2) {
+            throw new Error("Enter at least two characters to search for a team.");
+        }
+
+        const granted = await requestSportsDataAccess();
+        if (!granted) {
+            throw new Error(
+                "SofaScore access was not granted, so the team could not be searched."
+            );
+        }
+
+        return searchSportsProvider(searchTerm, sport);
+    }
+
+    async function searchFootballTeams(): Promise<void> {
+        footballMessage = "";
+        footballMessageIsError = false;
+        footballSearchResults = [];
+        footballSearching = true;
+
+        try {
+            footballSearchResults = await findSportsTeams(
+                "football",
+                footballTeamQuery
+            );
+            footballMessage = footballSearchResults.length
+                ? "Choose a team to show its widget in the header."
+                : "No football teams found. Try a different name.";
+            footballMessageIsError = footballSearchResults.length === 0;
+        } catch (error) {
+            footballMessage = messageFromError(error);
+            footballMessageIsError = true;
+        } finally {
+            footballSearching = false;
+        }
+    }
+
+    async function searchCricketTeams(): Promise<void> {
+        cricketMessage = "";
+        cricketMessageIsError = false;
+        cricketSearchResults = [];
+        cricketSearching = true;
+
+        try {
+            cricketSearchResults = await findSportsTeams(
+                "cricket",
+                cricketTeamQuery
+            );
+            cricketMessage = cricketSearchResults.length
+                ? "Choose a team to show its widget in the header."
+                : "No cricket teams found. Try a different name.";
+            cricketMessageIsError = cricketSearchResults.length === 0;
+        } catch (error) {
+            cricketMessage = messageFromError(error);
+            cricketMessageIsError = true;
+        } finally {
+            cricketSearching = false;
+        }
+    }
+
+    function describeSportsTeam(team: SportsTeam): string {
+        const gender =
+            team.gender === "M"
+                ? "Men"
+                : team.gender === "F"
+                  ? "Women"
+                  : team.gender;
+        return [
+            team.countryName,
+            team.national ? "National team" : gender,
+        ]
+            .filter((value): value is string => Boolean(value))
+            .join(" · ");
+    }
+
+    function selectSportsTeam(sport: SportsKind, team: SportsTeam): void {
+        try {
+            sportsSettings.save(sport, team);
+            if (sport === "football") {
+                footballTeamQuery = team.name;
+                footballSearchResults = [];
+                footballMessage = `${team.name} selected. Its widget is now shown in the header.`;
+                footballMessageIsError = false;
+            } else {
+                cricketTeamQuery = team.name;
+                cricketSearchResults = [];
+                cricketMessage = `${team.name} selected. Its widget is now shown in the header.`;
+                cricketMessageIsError = false;
+            }
+        } catch (error) {
+            if (sport === "football") {
+                footballMessage = messageFromError(error);
+                footballMessageIsError = true;
+            } else {
+                cricketMessage = messageFromError(error);
+                cricketMessageIsError = true;
+            }
+        }
+    }
+
+    async function clearSportsTeam(sport: SportsKind): Promise<void> {
+        try {
+            sportsSettings.clear(sport);
+            if (sport === "football") {
+                footballTeamQuery = "";
+                footballSearchResults = [];
+            } else {
+                cricketTeamQuery = "";
+                cricketSearchResults = [];
+            }
+        } catch (error) {
+            const message = messageFromError(error);
+            if (sport === "football") {
+                footballMessage = message;
+                footballMessageIsError = true;
+            } else {
+                cricketMessage = message;
+                cricketMessageIsError = true;
+            }
+            return;
+        }
+
+        const messageKey = sport === "football" ? "football" : "cricket";
+        const setMessage = (message: string, isError: boolean): void => {
+            if (messageKey === "football") {
+                footballMessage = message;
+                footballMessageIsError = isError;
+            } else {
+                cricketMessage = message;
+                cricketMessageIsError = isError;
+            }
+        };
+
+        if ($sportsSettings.football || $sportsSettings.cricket) {
+            setMessage("The selected team was removed.", false);
+            return;
+        }
+
+        try {
+            const permissionRemoved = await removeSportsDataAccess();
+            setMessage(
+                permissionRemoved
+                    ? "The selected team was removed and SofaScore access was revoked."
+                    : "The selected team was removed.",
+                false
+            );
+        } catch (error) {
+            setMessage(
+                "The selected team was removed, but SofaScore access could not be revoked: " +
+                    messageFromError(error),
+                true
+            );
+        }
+    }
+
     async function saveBackgroundKey(): Promise<void> {
         backgroundMessage = "";
         backgroundMessageIsError = false;
@@ -500,7 +675,10 @@
                 </span>
             {/if}
         </div>
-        <Clock />
+        <div class="footer-meta">
+            <Clock />
+            <span class="version-label">Version __VERSION__</span>
+        </div>
     </div>
     <div class="info-actions">
         <button
@@ -844,6 +1022,155 @@
             {/if}
         </section>
 
+        <section class="settings-section" aria-labelledby="sports-heading">
+            <h2 id="sports-heading">Sports widgets</h2>
+            <p class="section-description">
+                Choose one team for football/soccer and cricket. Each widget appears in
+                the header only after you select a team, and can be removed here.
+            </p>
+            <p class="field-hint">
+                Sports results and team badges come from
+                <a href="https://www.sofascore.com/" target="_blank" rel="noopener noreferrer">
+                    SofaScore
+                </a>.
+                No API key is required. Team searches and fixture requests go to SofaScore,
+                which receives your network address. Its public API is undocumented and
+                may change. Clicking a widget opens a Google search for the team and match.
+            </p>
+
+            <h3>Football / soccer</h3>
+            <form on:submit|preventDefault={searchFootballTeams}>
+                <label class="field" for="football-team-query">
+                    Search for a club or national team
+                    <input
+                        id="football-team-query"
+                        type="search"
+                        bind:value={footballTeamQuery}
+                        placeholder="For example, Liverpool"
+                        minlength="2"
+                        disabled={footballSearching}
+                        required
+                    />
+                </label>
+                <div class="button-row">
+                    <button
+                        class="button button-primary"
+                        type="submit"
+                        disabled={footballSearching || footballTeamQuery.trim().length < 2}
+                    >
+                        {footballSearching ? "Searching…" : "Search teams"}
+                    </button>
+                    <button
+                        class="button"
+                        type="button"
+                        on:click={() => clearSportsTeam("football")}
+                        disabled={!$sportsSettings.football || footballSearching}
+                    >
+                        Remove football team
+                    </button>
+                </div>
+            </form>
+            {#if $sportsSettings.football}
+                <p class="field-hint">
+                    Currently following {$sportsSettings.football.name}.
+                </p>
+            {/if}
+            {#if footballSearchResults.length > 0}
+                <div class="sports-team-results" aria-label="Football team results">
+                    {#each footballSearchResults as team (team.id)}
+                        <button
+                            class="button sports-team-result"
+                            type="button"
+                            on:click={() => selectSportsTeam("football", team)}
+                        >
+                            <span class="sports-team-result-copy">
+                                <strong>{team.name}</strong>
+                                {#if describeSportsTeam(team)}
+                                    <small>{describeSportsTeam(team)}</small>
+                                {/if}
+                            </span>
+                            <span>Select</span>
+                        </button>
+                    {/each}
+                </div>
+            {/if}
+            {#if footballMessage}
+                <p
+                    class:error={footballMessageIsError}
+                    class="form-message"
+                    aria-live="polite"
+                >
+                    {footballMessage}
+                </p>
+            {/if}
+
+            <h3>Cricket</h3>
+            <form on:submit|preventDefault={searchCricketTeams}>
+                <label class="field" for="cricket-team-query">
+                    Search for a club or national team
+                    <input
+                        id="cricket-team-query"
+                        type="search"
+                        bind:value={cricketTeamQuery}
+                        placeholder="For example, Australia"
+                        minlength="2"
+                        disabled={cricketSearching}
+                        required
+                    />
+                </label>
+                <div class="button-row">
+                    <button
+                        class="button button-primary"
+                        type="submit"
+                        disabled={cricketSearching || cricketTeamQuery.trim().length < 2}
+                    >
+                        {cricketSearching ? "Searching…" : "Search teams"}
+                    </button>
+                    <button
+                        class="button"
+                        type="button"
+                        on:click={() => clearSportsTeam("cricket")}
+                        disabled={!$sportsSettings.cricket || cricketSearching}
+                    >
+                        Remove cricket team
+                    </button>
+                </div>
+            </form>
+            {#if $sportsSettings.cricket}
+                <p class="field-hint">
+                    Currently following {$sportsSettings.cricket.name}.
+                </p>
+            {/if}
+            {#if cricketSearchResults.length > 0}
+                <div class="sports-team-results" aria-label="Cricket team results">
+                    {#each cricketSearchResults as team (team.id)}
+                        <button
+                            class="button sports-team-result"
+                            type="button"
+                            on:click={() => selectSportsTeam("cricket", team)}
+                        >
+                            <span class="sports-team-result-copy">
+                                <strong>{team.name}</strong>
+                                {#if describeSportsTeam(team)}
+                                    <small>{describeSportsTeam(team)}</small>
+                                {/if}
+                            </span>
+                            <span>Select</span>
+                        </button>
+                    {/each}
+                </div>
+            {/if}
+            {#if cricketMessage}
+                <p
+                    class:error={cricketMessageIsError}
+                    class="form-message"
+                    aria-live="polite"
+                >
+                    {cricketMessage}
+                </p>
+            {/if}
+        </section>
+
         <section class="settings-section" aria-labelledby="panels-heading">
             <h2 id="panels-heading">Optional panels</h2>
             <p class="section-description">
@@ -927,7 +1254,6 @@
         </section>
 
         <footer class="settings-footer">
-            <span>Version __VERSION__</span>
             <span>Settings are saved in this browser.</span>
         </footer>
     </div>
@@ -958,6 +1284,20 @@
         justify-content: space-between;
         gap: 1rem;
         min-width: 0;
+    }
+
+    .footer-meta {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.75rem;
+    }
+
+    .version-label {
+        color: rgba(var(--theme-text-secondary-rgb, 230, 246, 251), 0.82);
+        font-size: 0.7rem;
+        white-space: nowrap;
     }
 
     .image-credit {
@@ -1228,6 +1568,34 @@
         font-weight: 400;
     }
 
+    .sports-team-results {
+        display: grid;
+        gap: 0.45rem;
+        margin-top: 0.55rem;
+    }
+
+    .sports-team-result {
+        width: 100%;
+        justify-content: space-between;
+        gap: 0.75rem;
+        text-align: left;
+    }
+
+    .sports-team-result-copy {
+        display: grid;
+        min-width: 0;
+    }
+
+    .sports-team-result-copy strong {
+        overflow-wrap: anywhere;
+    }
+
+    .sports-team-result-copy small {
+        color: #5c6d73;
+        font-size: 0.72rem;
+        font-weight: 400;
+    }
+
     .button {
         display: inline-flex;
         align-items: center;
@@ -1335,6 +1703,10 @@
             display: grid;
             grid-template-columns: minmax(0, 1fr);
             gap: 0.25rem;
+        }
+
+        .footer-meta {
+            justify-content: flex-start;
         }
 
         .settings-content {

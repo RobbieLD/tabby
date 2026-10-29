@@ -6,6 +6,8 @@
     import { isLocalPreview } from "../utils/environment";
     import { WEATHER_CACHE_KEY, weatherLocation } from "../stores/weather";
 
+    export let hasSportsWidgets = false;
+
     interface WeatherCache {
         latitude: number;
         longitude: number;
@@ -159,7 +161,12 @@
     onDestroy(() => activeController?.abort());
 </script>
 
-<aside class="weather-widget" aria-label="Current weather" aria-live="polite">
+<aside
+    class="weather-widget"
+    class:has-sports-widgets={hasSportsWidgets}
+    aria-label="Current weather"
+    aria-live="polite"
+>
     {#if isPreviewMode}
         <div class="weather-copy">
             <div class="weather-reading">
@@ -223,6 +230,10 @@
         padding: 0;
         color: rgb(var(--theme-text-primary-rgb, 255, 255, 255));
         text-align: right;
+    }
+
+    .weather-widget.has-sports-widgets {
+        max-width: min(16rem, 24vw);
     }
 
     .weather-copy {
@@ -316,6 +327,10 @@
     @media (max-width: 820px) {
         .weather-widget {
             max-width: 100%;
+        }
+
+        .weather-widget.has-sports-widgets {
+            max-width: min(100%, 42vw);
         }
     }
 </style>

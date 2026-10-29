@@ -473,6 +473,7 @@
                 <thead>
                     <tr>
                         <th scope="col">ID</th>
+                        <th scope="col">Type</th>
                         <th scope="col">Work item</th>
                         <th scope="col">Project</th>
                         <th scope="col">State</th>
@@ -482,9 +483,11 @@
                     {#each items as item (item.id)}
                         <tr>
                             <td class="id-cell">{item.id}</td>
+                            <td class="type-cell">
+                                <span class="work-item-type">{item.type}</span>
+                            </td>
                             <td class="title-cell">
                                 <a href={item.url} target="_blank" rel="noopener noreferrer">
-                                    <span class="work-item-type">{item.type}</span>
                                     {item.title}
                                 </a>
                             </td>
@@ -685,6 +688,11 @@
         width: 3rem;
     }
 
+    th:nth-child(2),
+    td:nth-child(2) {
+        width: 7rem;
+    }
+
     .id-cell {
         color: rgb(var(--theme-text-primary-rgb, 245, 247, 250));
         white-space: nowrap;
@@ -710,10 +718,13 @@
     }
 
     .work-item-type {
-        display: block;
-        margin-bottom: 0.15rem;
+        display: inline-block;
+        max-width: 100%;
         color: rgba(var(--theme-text-secondary-rgb, 230, 246, 251), 0.7);
         font-size: 0.68rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .state {

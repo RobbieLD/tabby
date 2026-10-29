@@ -60,9 +60,8 @@
 
     .panel-rail--left {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1fr);
         align-content: start;
-        column-gap: 2rem;
         row-gap: 1.5rem;
         grid-area: sidebar;
         width: max-content;

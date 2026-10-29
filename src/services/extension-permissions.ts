@@ -204,6 +204,16 @@ export const requestWeatherAccess = (): Promise<boolean> =>
 export const removeWeatherAccess = (): Promise<boolean> =>
     removeExtensionPermission(WEATHER_PERMISSION);
 
+const SPORTS_DATA_PERMISSION: ExtensionPermission = {
+    origins: ["https://www.sofascore.com/*"],
+};
+
+export const requestSportsDataAccess = (): Promise<boolean> =>
+    requestExtensionPermission(SPORTS_DATA_PERMISSION);
+
+export const removeSportsDataAccess = (): Promise<boolean> =>
+    removeExtensionPermission(SPORTS_DATA_PERMISSION);
+
 const UNSPLASH_ORIGIN_PERMISSION: ExtensionPermission = {
     origins: ["https://api.unsplash.com/*"],
 };

@@ -2,11 +2,13 @@
     import { onMount } from "svelte";
     import SidePanels from "./components/SidePanels.svelte";
     import Settings from "./components/Settings.svelte";
+    import SportsWidgets from "./components/SportsWidgets.svelte";
     import WeatherWidget from "./components/WeatherWidget.svelte";
     import WelcomePanel from "./components/WelcomePanel.svelte";
     import { background } from "./stores/background";
     import { icons } from "./stores/icons";
     import { azureDevOpsSettings } from "./stores/azure-devops";
+    import { sportsSettings } from "./stores/sports";
     import { weatherLocation } from "./stores/weather";
     import { isLocalPreview, localPreviewConfig } from "./utils/environment";
     import {
@@ -46,10 +48,14 @@
         ($azureDevOpsSettings.enabled &&
             Boolean($azureDevOpsSettings.organization) &&
             Boolean($azureDevOpsSettings.pat));
+    $: hasSportsWidgets =
+        Boolean($sportsSettings.football) || Boolean($sportsSettings.cricket);
     $: showWelcome =
         $icons.length === 0 &&
         !showLeftPanels &&
         !$weatherLocation &&
+        !$sportsSettings.football &&
+        !$sportsSettings.cricket &&
         !$background.url;
 
     let draggedShortcutIndex: number | null = null;
@@ -196,7 +202,18 @@
                     </a>
                 {/each}
             </nav>
-            <WeatherWidget />
+            <div
+                class="header-widgets"
+                class:has-sports-widgets={hasSportsWidgets}
+            >
+                <SportsWidgets />
+                <div class="weather-group">
+                    {#if hasSportsWidgets}
+                        <span class="weather-divider" aria-hidden="true"></span>
+                    {/if}
+                    <WeatherWidget hasSportsWidgets={hasSportsWidgets} />
+                </div>
+            </div>
         </div>
     </header>
     <div
@@ -263,6 +280,36 @@
         background: var(--surface-tint);
         box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.4);
         backdrop-filter: blur(20px);
+    }
+
+    .header-widgets {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.45rem 0.65rem;
+        width: max-content;
+        max-width: min(64vw, 55rem);
+        min-width: 0;
+    }
+
+    .header-widgets.has-sports-widgets {
+        max-width: min(72vw, 60rem);
+    }
+
+    .weather-group {
+        display: flex;
+        flex: 0 1 auto;
+        align-items: center;
+        gap: 0.65rem;
+        min-width: 0;
+    }
+
+    .weather-divider {
+        flex: 0 0 1px;
+        align-self: stretch;
+        min-height: 3rem;
+        background: rgba(var(--theme-text-primary-rgb, 255, 255, 255), 0.2);
     }
 
     .content {
@@ -374,6 +421,17 @@
         .top-bar {
             grid-template-columns: minmax(0, 1fr);
             gap: 0.5rem;
+        }
+
+        .header-widgets {
+            justify-self: stretch;
+            justify-content: flex-start;
+            width: 100%;
+            max-width: none;
+        }
+
+        .header-widgets.has-sports-widgets {
+            max-width: none;
         }
 
         .workspace.has-left-panel {
