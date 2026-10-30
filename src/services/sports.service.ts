@@ -117,6 +117,10 @@ interface SportsCache {
 const cacheKey = (team: SportsTeam): string =>
     `sports-fixtures:${team.sport}:${team.id}`;
 
+export const clearFixtureCache = (team: SportsTeam): void => {
+    window.localStorage.removeItem(cacheKey(team));
+};
+
 const isSportsMatch = (value: unknown): value is SportsMatch => {
     if (!isRecord(value)) {
         return false;

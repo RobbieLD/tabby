@@ -2,10 +2,19 @@ import { Vibrant } from "node-vibrant/browser";
 
 const PALETTE_IMAGE_WIDTH = 400;
 
+export type PaletteSwatchName =
+    | "vibrant"
+    | "muted"
+    | "darkVibrant"
+    | "darkMuted"
+    | "lightVibrant"
+    | "lightMuted";
+
 export interface BackgroundTextPalette {
     primaryRgb: string;
     secondaryRgb: string;
     accentRgb: string;
+    swatches: Record<PaletteSwatchName, string | null>;
 }
 
 function getPaletteImageUrl(imageUrl: string): string {
@@ -39,10 +48,20 @@ export async function getBackgroundTextPalette(
     const accent = palette.LightVibrant ?? palette.Vibrant ?? primary;
     const toRgbChannels = (rgb: number[]): string =>
         rgb.map((channel) => Math.round(channel)).join(", ");
+    const toOptionalRgbChannels = (swatch: { rgb: number[] } | null | undefined) =>
+        swatch ? toRgbChannels(swatch.rgb) : null;
 
     return {
         primaryRgb: toRgbChannels(primary.rgb),
         secondaryRgb: toRgbChannels(secondary.rgb),
         accentRgb: toRgbChannels(accent.rgb),
+        swatches: {
+            vibrant: toOptionalRgbChannels(palette.Vibrant),
+            muted: toOptionalRgbChannels(palette.Muted),
+            darkVibrant: toOptionalRgbChannels(palette.DarkVibrant),
+            darkMuted: toOptionalRgbChannels(palette.DarkMuted),
+            lightVibrant: toOptionalRgbChannels(palette.LightVibrant),
+            lightMuted: toOptionalRgbChannels(palette.LightMuted),
+        },
     };
 }

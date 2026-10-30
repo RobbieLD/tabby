@@ -1,10 +1,14 @@
 <script lang="ts">
-    import { onDestroy } from "svelte";
+    import { onDestroy, onMount } from "svelte";
     import type { CurrentWeather, WeatherLocation } from "../models/weather";
     import { describeWeather, getCurrentWeather } from "../services/weather.service";
     import { hasLocationInfoAccess } from "../services/extension-permissions";
     import { isLocalPreview } from "../utils/environment";
-    import { WEATHER_CACHE_KEY, weatherLocation } from "../stores/weather";
+    import {
+        currentWeather,
+        WEATHER_CACHE_KEY,
+        weatherLocation,
+    } from "../stores/weather";
 
     export let hasSportsWidgets = false;
 
@@ -16,13 +20,22 @@
     }
 
     const CACHE_DURATION_MS = 15 * 60 * 1000;
+    const REFRESH_CHECK_INTERVAL_MS = 60 * 1000;
+    const RETRY_DELAY_MS = 5 * 60 * 1000;
     const isPreviewMode = isLocalPreview();
     const sampleWeather: CurrentWeather = {
         temperature: 18,
         apparentTemperature: 17,
         weatherCode: 2,
         windSpeed: 12,
+        windDirection: 240,
+        humidity: 56,
+        pressure: 1014,
+        minimumTemperature: 12,
+        maximumTemperature: 20,
     };
+    const isOptionalNumber = (value: unknown): boolean =>
+        value === null || (typeof value === "number" && Number.isFinite(value));
     const isCurrentWeather = (value: unknown): value is CurrentWeather => {
         if (typeof value !== "object" || value === null) {
             return false;
@@ -33,37 +46,64 @@
             apparentTemperature?: unknown;
             weatherCode?: unknown;
             windSpeed?: unknown;
+            windDirection?: unknown;
+            humidity?: unknown;
+            pressure?: unknown;
+            minimumTemperature?: unknown;
+            maximumTemperature?: unknown;
         };
         return (
             typeof candidate.temperature === "number" &&
             typeof candidate.apparentTemperature === "number" &&
             typeof candidate.weatherCode === "number" &&
-            typeof candidate.windSpeed === "number"
+            typeof candidate.windSpeed === "number" &&
+            isOptionalNumber(candidate.windDirection) &&
+            isOptionalNumber(candidate.humidity) &&
+            isOptionalNumber(candidate.pressure) &&
+            isOptionalNumber(candidate.minimumTemperature) &&
+            isOptionalNumber(candidate.maximumTemperature)
         );
     };
 
     let current: CurrentWeather | null = null;
+    let currentFetchedAt = 0;
+    let lastAttemptAt = 0;
     let loading = false;
     let error = "";
     let requestNumber = 0;
     let activeController: AbortController | null = null;
     let currentLocationKey = "";
 
-    $: if (isPreviewMode) {
-        current = sampleWeather;
-    } else if ($weatherLocation) {
-        void loadWeather($weatherLocation);
-    } else {
+    // Keep this a function call so the statement only re-runs when the location changes.
+    $: syncLocation($weatherLocation);
+
+    function setWeather(weather: CurrentWeather | null, fetchedAt = 0): void {
+        current = weather;
+        currentFetchedAt = fetchedAt;
+        currentWeather.set(weather);
+    }
+
+    function syncLocation(location: WeatherLocation | null): void {
+        if (isPreviewMode) {
+            setWeather(sampleWeather, Date.now());
+            return;
+        }
+
+        if (location) {
+            void loadWeather(location);
+            return;
+        }
+
         activeController?.abort();
         activeController = null;
         requestNumber += 1;
         currentLocationKey = "";
-        current = null;
+        setWeather(null);
         loading = false;
         error = "";
     }
 
-    function readCache(location: WeatherLocation): CurrentWeather | null {
+    function readCache(location: WeatherLocation): WeatherCache | null {
         const storedCache = window.localStorage.getItem(WEATHER_CACHE_KEY);
         if (!storedCache) {
             return null;
@@ -84,7 +124,7 @@
             ) {
                 return null;
             }
-            return (cache as WeatherCache).weather;
+            return cache as WeatherCache;
         } catch (cause) {
             console.error("The cached weather could not be loaded.", cause);
             window.localStorage.removeItem(WEATHER_CACHE_KEY);
@@ -102,7 +142,7 @@
         const currentRequest = ++requestNumber;
         const locationKey = `${location.latitude},${location.longitude}`;
         if (currentLocationKey && currentLocationKey !== locationKey) {
-            current = null;
+            setWeather(null);
         }
         currentLocationKey = locationKey;
         error = "";
@@ -110,13 +150,14 @@
 
         try {
             if (!forceRefresh) {
-                const cachedWeather = readCache(location);
-                if (cachedWeather) {
-                    current = cachedWeather;
+                const cache = readCache(location);
+                if (cache) {
+                    setWeather(cache.weather, cache.fetchedAt);
                     return;
                 }
             }
 
+            lastAttemptAt = Date.now();
             if (!(await hasLocationInfoAccess())) {
                 throw new Error(
                     "Location data consent is disabled. Re-enable weather location in Settings before requesting weather."
@@ -124,16 +165,20 @@
             }
 
             const weather = await getCurrentWeather(location, controller.signal);
-            current = weather;
+            if (controller.signal.aborted || currentRequest !== requestNumber) {
+                return;
+            }
+            const fetchedAt = Date.now();
             window.localStorage.setItem(
                 WEATHER_CACHE_KEY,
                 JSON.stringify({
                     latitude: location.latitude,
                     longitude: location.longitude,
-                    fetchedAt: Date.now(),
+                    fetchedAt,
                     weather,
                 } satisfies WeatherCache)
             );
+            setWeather(weather, fetchedAt);
         } catch (cause) {
             if (!controller.signal.aborted) {
                 error =
@@ -157,6 +202,31 @@
     function openSettings(): void {
         window.dispatchEvent(new Event("open-settings"));
     }
+
+    function refreshIfStale(): void {
+        const now = Date.now();
+        if (
+            isPreviewMode ||
+            document.hidden ||
+            loading ||
+            !$weatherLocation ||
+            now - currentFetchedAt < CACHE_DURATION_MS ||
+            now - lastAttemptAt < RETRY_DELAY_MS
+        ) {
+            return;
+        }
+
+        void loadWeather($weatherLocation);
+    }
+
+    onMount(() => {
+        const refreshTimer = window.setInterval(refreshIfStale, REFRESH_CHECK_INTERVAL_MS);
+        document.addEventListener("visibilitychange", refreshIfStale);
+        return () => {
+            window.clearInterval(refreshTimer);
+            document.removeEventListener("visibilitychange", refreshIfStale);
+        };
+    });
 
     onDestroy(() => activeController?.abort());
 </script>
@@ -330,7 +400,7 @@
         }
 
         .weather-widget.has-sports-widgets {
-            max-width: min(100%, 42vw);
+            max-width: min(16rem, 42vw);
         }
     }
 </style>

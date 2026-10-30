@@ -1,14 +1,33 @@
 import { readable, derived } from 'svelte/store';
 import { convertOrdinal, convertDay, convertMonth } from '../utils/converters';
 
-export const now = readable(
-    new Date(),
-    // Start
-    (set) => {
-        const interval = setInterval(() => {
-            set(new Date());
-        }, 60000);
-    });
+const MINUTE_MS = 60 * 1000;
+
+// Ticks on each minute boundary and re-syncs when the tab becomes visible after throttling.
+export const now = readable(new Date(), (set) => {
+    let timer = 0;
+    const tick = () => {
+        const current = new Date();
+        set(current);
+        window.clearTimeout(timer);
+        timer = window.setTimeout(
+            tick,
+            MINUTE_MS - (current.getSeconds() * 1000 + current.getMilliseconds())
+        );
+    };
+    const onVisibilityChange = () => {
+        if (!document.hidden) {
+            tick();
+        }
+    };
+
+    tick();
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+        window.clearTimeout(timer);
+        document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+});
 
 export const time = derived(
     now,

@@ -72,13 +72,22 @@
         return `${teamScore ?? "—"}–${opponentScore ?? "—"} vs ${getOpponent(match)}`;
     }
 
-    function buildSearchUrl(): string {
-        const match = fixtures?.current ?? fixtures?.next ?? fixtures?.last;
+    function getSearchMatch(currentFixtures: SportsFixtures | null): SportsMatch | null {
+        return currentFixtures?.current ?? currentFixtures?.next ?? currentFixtures?.last ?? null;
+    }
+
+    function buildSearchUrl(match: SportsMatch | null): string {
         const searchTerms = match
             ? `${team.name} ${sportLabel.toLocaleLowerCase()} ${match.homeTeam} vs ${match.awayTeam} ${formatDate(match.startTimestamp, false)}`
             : `${team.name} ${sportLabel.toLocaleLowerCase()} fixtures`;
         return `https://www.google.com/search?q=${encodeURIComponent(searchTerms)}`;
     }
+
+    $: searchMatch = getSearchMatch(fixtures);
+    $: searchUrl = buildSearchUrl(searchMatch);
+    $: searchTitle = searchMatch
+        ? `Search Google for ${searchMatch.homeTeam} vs ${searchMatch.awayTeam}`
+        : `Search Google for ${team.name} ${sportLabel.toLocaleLowerCase()} fixtures`;
 
     function handleLogoError(): void {
         logoFailed = true;
@@ -100,11 +109,10 @@
     class="sports-widget"
     class:football-widget={team.sport === "football"}
     class:cricket-widget={team.sport === "cricket"}
-    href={buildSearchUrl()}
+    href={searchUrl}
     target="_blank"
     rel="noopener noreferrer"
-    title={`Search Google for ${team.name} ${sportLabel.toLocaleLowerCase()} fixtures`}
-    aria-label={`${sportLabel} fixtures for ${team.name}. Opens a Google search.`}
+    title={searchTitle}
 >
     <div class="sports-heading">
         {#if logoFailed}
@@ -129,7 +137,7 @@
     {#if loading && !fixtures}
         <span class="sports-status">Loading fixtures…</span>
     {:else if error && !fixtures}
-        <span class="sports-error" role="status" title={error}>
+        <span class="sports-error" title={error}>
             Sports data unavailable
         </span>
     {:else if fixtures}
@@ -173,6 +181,7 @@
             <span class="sports-stale-status" title={error}>Update failed</span>
         {/if}
     {/if}
+    <span class="visually-hidden">(opens a Google search in a new tab)</span>
 </a>
 
 <style>
@@ -212,6 +221,18 @@
     .sports-widget:focus-visible {
         outline: 2px solid rgb(var(--theme-text-accent-rgb, 198, 237, 249));
         outline-offset: 2px;
+    }
+
+    .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
     }
 
     .sports-heading {

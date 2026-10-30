@@ -28,7 +28,7 @@
 
     @media (max-width: 820px) {
         .sports-widgets {
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             justify-content: flex-start;
         }
     }

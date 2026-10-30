@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import LargeClock from "./components/LargeClock.svelte";
     import SidePanels from "./components/SidePanels.svelte";
     import Settings from "./components/Settings.svelte";
     import SportsWidgets from "./components/SportsWidgets.svelte";
@@ -8,6 +9,7 @@
     import { background } from "./stores/background";
     import { icons } from "./stores/icons";
     import { azureDevOpsSettings } from "./stores/azure-devops";
+    import { largeClockEnabled } from "./stores/large-clock";
     import { sportsSettings } from "./stores/sports";
     import { weatherLocation } from "./stores/weather";
     import { isLocalPreview, localPreviewConfig } from "./utils/environment";
@@ -19,9 +21,11 @@
     const menuIconFilter = `url("${new URL("#menu-icon-monochrome", window.location.href).href}")`;
     const settingsIconFilter = `url("${new URL("#menu-icon-alpha-tint", window.location.href).href}")`;
 
-    background.init(localPreviewConfig.unsplashAccessKey).catch((error: unknown) => {
-        console.error("Unable to load the Unsplash background.", error);
-    });
+    background
+        .init(isLocalPreview() ? localPreviewConfig.unsplashAccessKey : "")
+        .catch((error: unknown) => {
+            console.error("Unable to load the Unsplash background.", error);
+        });
 
     onMount(() => {
         hasWebsiteActivityAccess()
@@ -76,6 +80,11 @@
     }
 
     function allowShortcutDrop(event: DragEvent, index: number): void {
+        // Only shortcut drags from this page can be dropped; ignore files, links and text.
+        if (draggedShortcutIndex === null) {
+            return;
+        }
+
         event.preventDefault();
         dragTargetIndex = index;
         if (event.dataTransfer) {
@@ -83,21 +92,30 @@
         }
     }
 
-    function dropShortcut(event: DragEvent, targetIndex: number): void {
-        event.preventDefault();
-        const transferredIndex = event.dataTransfer?.getData("text/plain") || "";
-        const transferIndex = transferredIndex ? Number(transferredIndex) : NaN;
-        const sourceIndex =
-            draggedShortcutIndex ??
-            (Number.isInteger(transferIndex) ? transferIndex : null);
-
-        if (sourceIndex !== null) {
-            if (sourceIndex !== targetIndex) {
-                icons.reorder(sourceIndex, targetIndex);
-            }
-            suppressClickUntil = Date.now() + 500;
+    function leaveShortcutDropTarget(event: DragEvent, index: number): void {
+        const relatedTarget = event.relatedTarget;
+        if (
+            relatedTarget instanceof Node &&
+            (event.currentTarget as HTMLElement).contains(relatedTarget)
+        ) {
+            return;
         }
 
+        if (dragTargetIndex === index) {
+            dragTargetIndex = null;
+        }
+    }
+
+    function dropShortcut(event: DragEvent, targetIndex: number): void {
+        if (draggedShortcutIndex === null) {
+            return;
+        }
+
+        event.preventDefault();
+        if (draggedShortcutIndex !== targetIndex) {
+            icons.reorder(draggedShortcutIndex, targetIndex);
+        }
+        suppressClickUntil = Date.now() + 500;
         draggedShortcutIndex = null;
         dragTargetIndex = null;
     }
@@ -188,6 +206,7 @@
                         class:drop-target={dragTargetIndex === index && draggedShortcutIndex !== index}
                         on:dragstart={(event) => startDraggingShortcut(event, index)}
                         on:dragover={(event) => allowShortcutDrop(event, index)}
+                        on:dragleave={(event) => leaveShortcutDropTarget(event, index)}
                         on:drop={(event) => dropShortcut(event, index)}
                         on:dragend={finishDraggingShortcut}
                         on:click={openShortcut}
@@ -220,6 +239,7 @@
         class="workspace"
         class:has-left-panel={showLeftPanels}
         class:show-welcome={showWelcome}
+        class:has-clock={$largeClockEnabled}
     >
         <SidePanels
             enabled={showLeftPanels}
@@ -227,6 +247,11 @@
             pat={panelPat}
             teamName={panelTeamName}
         />
+        {#if $largeClockEnabled}
+            <div class="large-clock-slot">
+                <LargeClock />
+            </div>
+        {/if}
         {#if showWelcome}
             <WelcomePanel />
         {/if}
@@ -247,7 +272,7 @@
         --theme-text-primary-rgb: 255, 255, 255;
         --theme-text-secondary-rgb: 230, 246, 251;
         --theme-text-accent-rgb: 198, 237, 249;
-        --surface-tint: #00000061;
+        --surface-tint: #00000090;
         display: grid;
         grid-template-areas:
             "header"
@@ -284,7 +309,7 @@
 
     .header-widgets {
         display: flex;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         align-items: center;
         justify-content: flex-end;
         gap: 0.45rem 0.65rem;
@@ -310,6 +335,24 @@
         align-self: stretch;
         min-height: 3rem;
         background: rgba(var(--theme-text-primary-rgb, 255, 255, 255), 0.2);
+    }
+
+    @media (max-width: 1320px) {
+        .top-bar {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .header-widgets {
+            justify-self: stretch;
+            width: 100%;
+            max-width: none;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .header-widgets.has-sports-widgets {
+            max-width: none;
+        }
     }
 
     .content {
@@ -357,6 +400,7 @@
     .workspace {
         grid-area: workspace;
         display: grid;
+        grid-template-areas: "clock";
         grid-template-columns: minmax(0, 1fr);
         grid-template-rows: minmax(0, 1fr);
         min-width: 0;
@@ -365,13 +409,30 @@
     }
 
     .workspace.has-left-panel {
-        grid-template-areas: "sidebar .";
+        grid-template-areas: "sidebar clock";
         grid-template-columns: max-content minmax(0, 1fr);
     }
 
     .workspace.show-welcome {
         grid-template-areas: ". welcome .";
         grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+
+    .workspace.show-welcome.has-clock {
+        grid-template-areas: "welcome clock";
+        grid-template-columns: minmax(0, 38rem) minmax(0, 1fr);
+    }
+
+    .large-clock-slot {
+        grid-area: clock;
+        display: grid;
+        place-items: center;
+        box-sizing: border-box;
+        min-width: 0;
+        min-height: 0;
+        overflow: visible;
+        padding: clamp(0.5rem, 2vw, 1.5rem);
+        container-type: size;
     }
 
     .icon {
@@ -428,6 +489,7 @@
             justify-content: flex-start;
             width: 100%;
             max-width: none;
+            overflow-x: auto;
         }
 
         .header-widgets.has-sports-widgets {
@@ -435,10 +497,16 @@
         }
 
         .workspace.has-left-panel {
-            grid-template-areas: "sidebar";
+            grid-template-areas:
+                "sidebar"
+                "clock";
             grid-template-columns: minmax(0, 1fr);
-            grid-template-rows: auto;
+            grid-template-rows: auto auto;
             overflow-y: auto;
+        }
+
+        .large-clock-slot {
+            min-height: min(80vw, 40rem);
         }
 
         .workspace.show-welcome {
@@ -446,6 +514,14 @@
             grid-template-columns: minmax(0, 1fr);
             grid-template-rows: minmax(0, 1fr);
             overflow-y: auto;
+        }
+
+        .workspace.show-welcome.has-clock {
+            grid-template-areas:
+                "welcome"
+                "clock";
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: auto auto;
         }
 
         .content {

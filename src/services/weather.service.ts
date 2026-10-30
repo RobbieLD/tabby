@@ -6,6 +6,13 @@ interface ForecastResponse {
         apparent_temperature?: number;
         weather_code?: number;
         wind_speed_10m?: number;
+        wind_direction_10m?: number | null;
+        relative_humidity_2m?: number | null;
+        pressure_msl?: number | null;
+    };
+    daily?: {
+        temperature_2m_min?: (number | null)[];
+        temperature_2m_max?: (number | null)[];
     };
 }
 
@@ -31,6 +38,9 @@ const readResponse = async (
 
     return response.json() as Promise<unknown>;
 };
+
+const toOptionalNumber = (value: unknown): number | null =>
+    typeof value === "number" && Number.isFinite(value) ? value : null;
 
 const formatPlaceName = (place: GeocodingResult): string => {
     const parts = [place.name, place.admin1, place.country]
@@ -109,15 +119,20 @@ export const getCurrentWeather = async (
     url.searchParams.set("longitude", location.longitude.toString());
     url.searchParams.set(
         "current",
-        "temperature_2m,apparent_temperature,weather_code,wind_speed_10m"
+        "temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,relative_humidity_2m,pressure_msl"
     );
+    url.searchParams.set("daily", "temperature_2m_min,temperature_2m_max");
+    url.searchParams.set("forecast_days", "1");
     url.searchParams.set("temperature_unit", "celsius");
     url.searchParams.set("wind_speed_unit", "kmh");
     url.searchParams.set("timezone", "auto");
 
     const response = await fetch(url, { signal, cache: "no-store" });
-    const result = (await readResponse(response, "Current weather")) as ForecastResponse;
-    const current = result.current;
+    const result = (await readResponse(
+        response,
+        "Current weather"
+    )) as ForecastResponse | null;
+    const current = result?.current;
     if (
         !current ||
         typeof current.temperature_2m !== "number" ||
@@ -133,6 +148,11 @@ export const getCurrentWeather = async (
         apparentTemperature: current.apparent_temperature,
         weatherCode: current.weather_code,
         windSpeed: current.wind_speed_10m,
+        windDirection: toOptionalNumber(current.wind_direction_10m),
+        humidity: toOptionalNumber(current.relative_humidity_2m),
+        pressure: toOptionalNumber(current.pressure_msl),
+        minimumTemperature: toOptionalNumber(result?.daily?.temperature_2m_min?.[0]),
+        maximumTemperature: toOptionalNumber(result?.daily?.temperature_2m_max?.[0]),
     };
 };
 

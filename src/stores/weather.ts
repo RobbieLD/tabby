@@ -1,8 +1,9 @@
 import { writable } from "svelte/store";
-import type { WeatherLocation } from "../models/weather";
+import type { CurrentWeather, WeatherLocation } from "../models/weather";
 
 const LOCATION_KEY = "weather-location";
 export const WEATHER_CACHE_KEY = "weather-cache";
+export const currentWeather = writable<CurrentWeather | null>(null);
 
 const isWeatherLocation = (value: unknown): value is WeatherLocation => {
     if (typeof value !== "object" || value === null) {

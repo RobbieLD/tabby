@@ -73,6 +73,7 @@ const readSettings = (): AzureDevOpsSettings => {
         };
     } catch (error) {
         console.error("Azure DevOps settings could not be loaded.", error);
+        window.localStorage.removeItem(STORAGE_KEY);
         return { ...DEFAULT_SETTINGS };
     }
 };

@@ -1,5 +1,6 @@
 import { get, writable } from "svelte/store";
 import type { SportsKind, SportsSettings, SportsTeam } from "../models/sports";
+import { clearFixtureCache } from "../services/sports.service";
 
 const SPORTS_SETTINGS_KEY = "sports-teams";
 
@@ -64,19 +65,26 @@ export const sportsSettings = {
             throw new Error("Choose a valid team for this sport.");
         }
 
+        const currentSettings = get(settingsStore);
+        const previousTeam = currentSettings[sport];
         const updatedSettings = {
-            ...get(settingsStore),
+            ...currentSettings,
             [sport]: team,
         };
         window.localStorage.setItem(
             SPORTS_SETTINGS_KEY,
             JSON.stringify(updatedSettings)
         );
+        if (previousTeam && previousTeam.id !== team.id) {
+            clearFixtureCache(previousTeam);
+        }
         settingsStore.set(updatedSettings);
     },
     clear: (sport: SportsKind): void => {
+        const currentSettings = get(settingsStore);
+        const previousTeam = currentSettings[sport];
         const updatedSettings = {
-            ...get(settingsStore),
+            ...currentSettings,
             [sport]: null,
         };
         if (!updatedSettings.football && !updatedSettings.cricket) {
@@ -86,6 +94,9 @@ export const sportsSettings = {
                 SPORTS_SETTINGS_KEY,
                 JSON.stringify(updatedSettings)
             );
+        }
+        if (previousTeam) {
+            clearFixtureCache(previousTeam);
         }
         settingsStore.set(updatedSettings);
     },

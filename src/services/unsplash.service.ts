@@ -23,9 +23,16 @@ export const DEFAULT_UNSPLASH_COLOR: UnsplashColor = "black";
 export const isUnsplashColor = (value: string): value is UnsplashColor =>
     UNSPLASH_COLOR_OPTIONS.some((option) => option.value === value);
 
+interface UnsplashPhotoUrls {
+    raw?: string;
+    full?: string;
+}
+
 interface UnsplashSearchResponse {
     results?: Array<{
-        urls?: { full?: string };
+        width?: number;
+        height?: number;
+        urls?: UnsplashPhotoUrls;
         description?: string | null;
         alt_description?: string | null;
         links?: { download_location?: string };
@@ -35,6 +42,39 @@ interface UnsplashSearchResponse {
         };
     }>;
 }
+
+const MIN_IMAGE_WIDTH = 1280;
+const MAX_IMAGE_WIDTH = 3840;
+const DEFAULT_PHOTO_ASPECT_RATIO = 3 / 2;
+
+// Width that lets the photo cover this screen at its pixel density without
+// downloading the full-size original.
+const getImageWidth = (photoWidth?: number, photoHeight?: number): number => {
+    const aspectRatio =
+        photoWidth && photoHeight ? photoWidth / photoHeight : DEFAULT_PHOTO_ASPECT_RATIO;
+    const coverWidth =
+        Math.max(window.screen.width, window.screen.height * aspectRatio) *
+        (window.devicePixelRatio || 1);
+    return Math.round(Math.min(MAX_IMAGE_WIDTH, Math.max(MIN_IMAGE_WIDTH, coverWidth)));
+};
+
+const getImageUrl = (
+    urls: UnsplashPhotoUrls | undefined,
+    photoWidth?: number,
+    photoHeight?: number
+): string | undefined => {
+    if (!urls?.raw) {
+        return urls?.full;
+    }
+
+    const imageUrl = new URL(urls.raw);
+    imageUrl.searchParams.set('w', String(getImageWidth(photoWidth, photoHeight)));
+    imageUrl.searchParams.set('fit', 'max');
+    imageUrl.searchParams.set('q', '80');
+    imageUrl.searchParams.set('fm', 'jpg');
+    imageUrl.searchParams.set('cs', 'srgb');
+    return imageUrl.toString();
+};
 
 export default class UnsplashService {
     private key: string
@@ -67,7 +107,7 @@ export default class UnsplashService {
             throw new Error("Unsplash found no landscape photos for the current search.");
         }
         const photo = data.results[Math.floor(Math.random() * data.results.length)];
-        const imageUrl = photo.urls?.full;
+        const imageUrl = getImageUrl(photo.urls, photo.width, photo.height);
         const downloadLocation = photo.links?.download_location;
         const photographerName = photo.user?.name;
         const photographerPage = photo.user?.links?.html;

@@ -688,11 +688,6 @@
         width: 3rem;
     }
 
-    th:nth-child(2),
-    td:nth-child(2) {
-        width: 7rem;
-    }
-
     .id-cell {
         color: rgb(var(--theme-text-primary-rgb, 245, 247, 250));
         white-space: nowrap;

@@ -1,8 +1,10 @@
 <script lang="ts">
+    import { onMount } from "svelte";
     import Clock from "./Clock.svelte";
     import { background } from "../stores/background";
     import { icons } from "../stores/icons";
     import { azureDevOpsSettings } from "../stores/azure-devops";
+    import { largeClockEnabled } from "../stores/large-clock";
     import { sportsSettings } from "../stores/sports";
     import { weatherLocation } from "../stores/weather";
     import type { SportsKind, SportsTeam } from "../models/sports";
@@ -34,15 +36,15 @@
     let newIconUrl = "";
     let files: FileList | null = null;
     let unsplashKey =
-        localPreviewConfig.unsplashAccessKey ||
         window.localStorage.getItem("unsplash") ||
+        (isLocalPreview() ? localPreviewConfig.unsplashAccessKey : "") ||
         "";
     let unsplashSearchTerms = background.getSearchTerms();
     let unsplashColor = background.getColor();
     let organization = $azureDevOpsSettings.organization;
     let personalAccessToken = $azureDevOpsSettings.pat;
     let azureDevOpsTeamName = $azureDevOpsSettings.teamName;
-    let showAssignedPanel = $azureDevOpsSettings.enabled;
+    let showWorkItemPanels = $azureDevOpsSettings.enabled;
     const usingLocalAzureDevOps =
         isLocalPreview() &&
         Boolean(localPreviewConfig.azureDevOpsOrganization) &&
@@ -60,6 +62,8 @@
     let iconPermissionMessageIsError = false;
     let weatherMessage = "";
     let weatherMessageIsError = false;
+    let largeClockMessage = "";
+    let largeClockMessageIsError = false;
     let weatherPlaceQuery = $weatherLocation?.name || "";
     let weatherSearchResults: WeatherLocation[] = [];
     let weatherSearching = false;
@@ -94,11 +98,18 @@
         showSettingsPanel = false;
     }
 
+    onMount(() => {
+        window.addEventListener("open-settings", openSettings);
+        return () => window.removeEventListener("open-settings", openSettings);
+    });
+
     async function saveIcon(): Promise<void> {
         shortcutMessage = "";
         shortcutMessageIsError = false;
 
         try {
+            // Validate first so a bad title or URL doesn't trigger the permission prompt.
+            icons.validate(newIconTitle, newIconUrl);
             if (!files?.[0]) {
                 const granted = await requestWebsiteActivityAccess();
                 if (!granted) {
@@ -191,8 +202,11 @@
         }
 
         try {
-            await icons.import(file);
-            shortcutMessage = "Your shortcuts were imported.";
+            const { skipped } = await icons.import(file);
+            shortcutMessage =
+                skipped > 0
+                    ? `Your shortcuts were imported. ${skipped} invalid or duplicate shortcut${skipped === 1 ? " was" : "s were"} skipped.`
+                    : "Your shortcuts were imported.";
             shortcutMessageIsError = false;
             removeIconTitle = "";
             reorderIconTitle = "";
@@ -211,7 +225,7 @@
         try {
             const normalizedOrganization = normalizeOrganization(organization);
             const normalizedPat = personalAccessToken.trim();
-            if (normalizedOrganization && normalizedPat && showAssignedPanel) {
+            if (normalizedOrganization && normalizedPat && showWorkItemPanels) {
                 const granted = await requestAzureDevOpsAccess();
                 if (!granted) {
                     throw new Error(
@@ -224,7 +238,7 @@
                 organization: normalizedOrganization,
                 pat: normalizedPat,
                 teamName: azureDevOpsTeamName,
-                enabled: showAssignedPanel,
+                enabled: showWorkItemPanels,
                 hideCompletedAndDone:
                     $azureDevOpsSettings.hideCompletedAndDone,
             });
@@ -253,11 +267,11 @@
 
             if (!savedSettings.organization || !savedSettings.pat) {
                 adoMessage =
-                    "Settings saved. Enter both an organization and a PAT to show the panel.";
+                    "Settings saved. Enter both an organization and a PAT to show the panels.";
             } else if (!savedSettings.enabled) {
-                adoMessage = "Settings saved. The assigned work panel is turned off.";
+                adoMessage = "Settings saved. The Azure DevOps work item panels are turned off.";
             } else {
-                adoMessage = "Settings saved. Your assigned work panel is ready.";
+                adoMessage = "Settings saved. Your Azure DevOps work item panels are ready.";
             }
         } catch (error) {
             adoMessage = messageFromError(error);
@@ -271,7 +285,7 @@
             organization = "";
             personalAccessToken = "";
             azureDevOpsTeamName = "";
-            showAssignedPanel = true;
+            showWorkItemPanels = true;
         } catch (error) {
             adoMessage = messageFromError(error);
             adoMessageIsError = true;
@@ -353,6 +367,24 @@
         } catch (error) {
             weatherMessage = messageFromError(error);
             weatherMessageIsError = true;
+        }
+    }
+
+    function updateLargeClock(event: Event): void {
+        largeClockMessage = "";
+        largeClockMessageIsError = false;
+        const input = event.currentTarget as HTMLInputElement;
+        const previousValue = $largeClockEnabled;
+
+        try {
+            largeClockEnabled.save(input.checked);
+            largeClockMessage = input.checked
+                ? "The large clock is enabled."
+                : "The large clock is hidden.";
+        } catch (error) {
+            input.checked = previousValue;
+            largeClockMessage = messageFromError(error);
+            largeClockMessageIsError = true;
         }
     }
 
@@ -612,8 +644,8 @@
         backgroundRefreshLoading = true;
 
         try {
-            if (!unsplashKey.trim()) {
-                throw new Error("Add an Unsplash access key before refreshing the background.");
+            if (!background.hasKey()) {
+                throw new Error("Save an Unsplash access key before refreshing the background.");
             }
             const granted = await requestUnsplashAccess();
             if (!granted) {
@@ -636,8 +668,6 @@
         }
     }
 </script>
-
-<svelte:window on:open-settings={openSettings} />
 
 <div class="info">
     <div class="info-content">
@@ -867,10 +897,11 @@
         <section class="settings-section" aria-labelledby="background-heading">
             <h2 id="background-heading">Background</h2>
             <p class="section-description">
-                Use your Unsplash access key for daily landscape backgrounds. Saving
-                the key requests Unsplash API access. Tabby requests landscape photos
-                using your selected color filter (black by default); leave the access
-                key blank to turn backgrounds off.
+                Use your Unsplash access key for landscape backgrounds; a new photo
+                is fetched at most once an hour. Saving the key requests Unsplash API
+                access. Tabby requests landscape photos using your selected color
+                filter (black by default); leave the access key blank to turn
+                backgrounds off.
             </p>
             <label class="field">
                 Unsplash access key
@@ -924,6 +955,40 @@
             {/if}
             {#if $background.error && !backgroundMessageIsError}
                 <p class="form-message error" role="alert">{$background.error}</p>
+            {/if}
+        </section>
+
+        <section class="settings-section" aria-labelledby="clock-heading">
+            <h2 id="clock-heading">Large clock</h2>
+            <p class="section-description">
+                Show the SVG calendar clock in the space beside your optional panels.
+                Its time and calendar dials work without a weather location; the sun,
+                moon, and current-weather gauges use your saved weather location.
+            </p>
+            <p class="field-hint">
+                Sun and moon positions are calculated locally with SunCalc. Weather
+                readings use Open-Meteo data for your saved location. See the
+                <a href="third-party-notices.txt" target="_blank" rel="noopener noreferrer">
+                    third-party notices
+                </a>
+                for the licenses of SunCalc and the other bundled libraries.
+            </p>
+            <label class="checkbox-field">
+                <input
+                    type="checkbox"
+                    checked={$largeClockEnabled}
+                    on:change={updateLargeClock}
+                />
+                Show the large clock
+            </label>
+            {#if largeClockMessage}
+                <p
+                    class:error={largeClockMessageIsError}
+                    class="form-message"
+                    aria-live="polite"
+                >
+                    {largeClockMessage}
+                </p>
             {/if}
         </section>
 
@@ -991,7 +1056,11 @@
             </form>
             {#if weatherSearchResults.length > 0}
                 <p class="field-hint">Choose the matching city or place:</p>
-                <div class="weather-location-results" aria-label="Location search results">
+                <div
+                    class="weather-location-results"
+                    role="group"
+                    aria-label="Location search results"
+                >
                     {#each weatherSearchResults as location (location.latitude + "," + location.longitude)}
                         <button
                             class="button weather-location-result"
@@ -1076,7 +1145,11 @@
                 </p>
             {/if}
             {#if footballSearchResults.length > 0}
-                <div class="sports-team-results" aria-label="Football team results">
+                <div
+                    class="sports-team-results"
+                    role="group"
+                    aria-label="Football team results"
+                >
                     {#each footballSearchResults as team (team.id)}
                         <button
                             class="button sports-team-result"
@@ -1142,7 +1215,11 @@
                 </p>
             {/if}
             {#if cricketSearchResults.length > 0}
-                <div class="sports-team-results" aria-label="Cricket team results">
+                <div
+                    class="sports-team-results"
+                    role="group"
+                    aria-label="Cricket team results"
+                >
                     {#each cricketSearchResults as team (team.id)}
                         <button
                             class="button sports-team-result"
@@ -1189,7 +1266,8 @@
                 <form on:submit|preventDefault={saveAzureDevOpsSettings}>
                     <h3>Azure DevOps</h3>
                     <p class="section-description">
-                        Show your open work items assigned to you. Both fields are required.
+                        Show your open assigned and followed work items. Organization and
+                        PAT are required.
                     </p>
                     <label class="field">
                         Organization
@@ -1197,7 +1275,7 @@
                             type="text"
                             bind:value={organization}
                             placeholder="For example, contoso"
-                            autocomplete="organization"
+                            autocomplete="off"
                         />
                     </label>
                     <label class="field">
@@ -1206,7 +1284,7 @@
                             type="text"
                             bind:value={azureDevOpsTeamName}
                             placeholder="Optional; defaults to each project's default team"
-                            autocomplete="organization-title"
+                            autocomplete="off"
                         />
                     </label>
                     <p class="field-hint">
@@ -1226,11 +1304,12 @@
                     <p class="field-hint">
                         Create a PAT with <strong>Work Items (Read)</strong> access. It is stored
                         only in this browser profile and sent only to Azure DevOps.
-                        Browser access to dev.azure.com is requested when you save an enabled panel.
+                        Browser access to dev.azure.com is requested when you save with the
+                        panels turned on.
                     </p>
                     <label class="checkbox-field">
-                        <input type="checkbox" bind:checked={showAssignedPanel} />
-                        Show the assigned work panel
+                        <input type="checkbox" bind:checked={showWorkItemPanels} />
+                        Show Azure DevOps work item panels
                     </label>
                     <div class="button-row">
                         <button class="button button-primary" type="submit">

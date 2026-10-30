@@ -93,7 +93,7 @@ const requestExtensionPermission = (
             return Promise.resolve(true);
         }
         return Promise.reject(
-            new Error("Open Tabby as a Chrome or Firefox extension to enable this panel.")
+            new Error("Open Tabby as a Chrome or Firefox extension to use this feature.")
         );
     }
 
@@ -103,7 +103,7 @@ const requestExtensionPermission = (
             if (error) {
                 reject(
                     new Error(
-                        error.message || "Azure DevOps access could not be requested."
+                        error.message || "The browser permission could not be requested."
                     )
                 );
                 return;
@@ -138,7 +138,7 @@ const removeExtensionPermission = (
             if (error) {
                 reject(
                     new Error(
-                        error.message || "Azure DevOps access could not be removed."
+                        error.message || "The browser permission could not be removed."
                     )
                 );
                 return;

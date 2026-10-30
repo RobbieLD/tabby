@@ -10,4 +10,9 @@ export interface CurrentWeather {
     apparentTemperature: number;
     weatherCode: number;
     windSpeed: number;
+    windDirection: number | null;
+    humidity: number | null;
+    pressure: number | null;
+    minimumTemperature: number | null;
+    maximumTemperature: number | null;
 }
