@@ -1,7 +1,8 @@
 <script lang="ts">
     import { onDestroy, onMount } from "svelte";
+    import WeatherConditionIcon from "./WeatherConditionIcon.svelte";
     import type { CurrentWeather, WeatherLocation } from "../models/weather";
-    import { describeWeather, getCurrentWeather } from "../services/weather.service";
+    import { getCurrentWeather } from "../services/weather.service";
     import { hasLocationInfoAccess } from "../services/extension-permissions";
     import { isLocalPreview } from "../utils/environment";
     import {
@@ -240,8 +241,8 @@
     {#if isPreviewMode}
         <div class="weather-copy">
             <div class="weather-reading">
+                <WeatherConditionIcon weatherCode={sampleWeather.weatherCode} />
                 <strong>18°C</strong>
-                <span>Partly cloudy</span>
             </div>
             <span class="weather-details">Feels like 17° · Wind 12 km/h</span>
         </div>
@@ -254,8 +255,8 @@
                     <span class="weather-error" role="alert">{error}</span>
                 {:else if current}
                     <div class="weather-reading">
+                        <WeatherConditionIcon weatherCode={current.weatherCode} />
                         <strong>{Math.round(current.temperature)}°C</strong>
-                        <span>{describeWeather(current.weatherCode)}</span>
                     </div>
                 {/if}
                 <button
@@ -327,10 +328,6 @@
         font-size: 2rem;
         line-height: 1;
         white-space: nowrap;
-    }
-
-    .weather-reading span {
-        font-size: 0.95rem;
     }
 
     .weather-details,

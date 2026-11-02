@@ -6,6 +6,8 @@
         getTimes,
     } from "suncalc";
     import type { PaletteSwatchName } from "../services/image-text-palette.service";
+    import { getWeatherIcon } from "../services/weather-icons";
+    import type { WeatherIcon } from "../services/weather-icons";
 
     interface Point {
         x: number;
@@ -62,16 +64,6 @@
     }
 
     type Swatches = Record<PaletteSwatchName, string>;
-    type WeatherIcon =
-        | "clear"
-        | "few-clouds"
-        | "scattered-clouds"
-        | "broken-clouds"
-        | "shower-rain"
-        | "rain"
-        | "thunderstorm"
-        | "snow"
-        | "mist";
     type Line = readonly [number, number, number, number];
 
     let nextInstanceId = 0;
@@ -575,35 +567,6 @@
         };
     }
 
-    // Picks the OpenWeatherMap icon the original clock would have shown for each WMO weather code.
-    function getWeatherIcon(weatherCode: number): WeatherIcon {
-        if (weatherCode === 0) {
-            return "clear";
-        }
-        if (weatherCode === 1) {
-            return "few-clouds";
-        }
-        if (weatherCode === 2) {
-            return "scattered-clouds";
-        }
-        if (weatherCode === 45 || weatherCode === 48) {
-            return "mist";
-        }
-        if ((weatherCode >= 51 && weatherCode <= 57) || (weatherCode >= 80 && weatherCode <= 82)) {
-            return "shower-rain";
-        }
-        if (weatherCode >= 61 && weatherCode <= 65) {
-            return "rain";
-        }
-        if ((weatherCode >= 66 && weatherCode <= 77) || weatherCode === 85 || weatherCode === 86) {
-            return "snow";
-        }
-        if (weatherCode >= 95 && weatherCode <= 99) {
-            return "thunderstorm";
-        }
-        return "broken-clouds";
-    }
-
     // Flat weather icons drawn to match the look and placement of the OpenWeatherMap icons the
     // original clock displayed in its weather gauge.
     const RAIN_DROPS: Point[] = [
@@ -891,6 +854,19 @@
         <circle class="dial" r="450" stroke-width="6" fill="none" />
 
         <g>
+            <title>
+                {#if weather}
+                    Temperature: {Math.round(weather.temperature)}°C.
+                    Daily low: {weather.minimumTemperature === null
+                        ? "unavailable"
+                        : `${Math.round(weather.minimumTemperature)}°C`};
+                    daily high: {weather.maximumTemperature === null
+                        ? "unavailable"
+                        : `${Math.round(weather.maximumTemperature)}°C`}.
+                {:else}
+                    Temperature and daily range. Choose a weather location in Settings to show current conditions.
+                {/if}
+            </title>
             <path class="temperature-quadrant" d={DAYS_OF_WEEK_REGION} />
             {#each TEMPERATURE_TICKS as [x1, y1, x2, y2]}
                 <line class="temperature-tick" {x1} {y1} {x2} {y2} />
@@ -1037,17 +1013,35 @@
         {/each}
 
         <g>
-            <path class="month-progress" d={calendar.monthProgressPath}>
-                <title>Day {calendar.monthProgressPath} of the month</title>
-            </path>
-            <text class="month-day" x="225" y="12" text-anchor="middle">{calendar.dayOfMonth}</text>
-            <circle class="dial gauge" cx="-225" r="50" stroke-width="4" />
-            <text class="day-of-year" text-anchor="middle">
-                <textPath href="#{id('day-of-year-path')}" startOffset="75%">
-                    <tspan dy="-6">{calendar.dayOfYear}</tspan>
-                </textPath>
-                <title>Day {calendar.dayOfYear} of the year</title>
-            </text>
+            <g>
+                <title>
+                    Day {now.getDate()} of {now.toLocaleDateString([], { month: "long" })};
+                    day {calendar.dayOfYear} of the year.
+                </title>
+                <path class="month-progress" d={calendar.monthProgressPath}>
+                    <title>
+                        Day {now.getDate()} of {now.toLocaleDateString([], { month: "long" })}.
+                    </title>
+                </path>
+                <text class="month-day" x="225" y="12" text-anchor="middle">
+                    {calendar.dayOfMonth}
+                    <title>
+                        Day {now.getDate()} of {now.toLocaleDateString([], { month: "long" })}.
+                    </title>
+                </text>
+                <text class="day-of-year" text-anchor="middle">
+                    <textPath href="#{id('day-of-year-path')}" startOffset="75%">
+                        <tspan dy="-6">{calendar.dayOfYear}</tspan>
+                    </textPath>
+                    <title>Day {calendar.dayOfYear} of the year</title>
+                </text>
+            </g>
+            <circle class="dial gauge" cx="-225" r="50" stroke-width="4">
+                <title>
+                    Day of the week: {now.toLocaleDateString([], { weekday: "long" })}.
+                    ISO week {calendar.weekNumber} of the year.
+                </title>
+            </circle>
         </g>
 
         <g>
@@ -1112,21 +1106,32 @@
         </g>
 
         <g>
-            <circle class="dial gauge" cx="225" r="50" stroke-width="4" />
-            {#each WEEKDAYS as weekday}
-                <text class="weekday" class:weekend={weekday.weekend}>
-                    <textPath href="#{id('week-path')}" startOffset={weekday.offset}>
-                        <tspan dy="18">{weekday.letter}</tspan>
-                    </textPath>
-                </text>
-            {/each}
-            <circle class="week-number-badge" cx="-225" cy="30" r="13" >
-                <title>Week {calendar.weekNumber} of the year</title>
+            <circle class="dial gauge" cx="225" r="50" stroke-width="4">
+                <title>
+                    Day {now.getDate()} of {now.toLocaleDateString([], { month: "long" })};
+                    day {calendar.dayOfYear} of the year.
+                </title>
             </circle>
-            <text class="week-number" x="-225" y="35" text-anchor="middle">{calendar.weekNumber}</text>
-            <g filter={url("dropshadow")}>
-                <circle class="week-pointer" cx="-225" r="10" />
-                <path class="week-pointer" d={calendar.weekArrowPath} />
+            <g>
+                <title>
+                    Day of the week: {now.toLocaleDateString([], { weekday: "long" })}.
+                    ISO week {calendar.weekNumber} of the year.
+                </title>
+                {#each WEEKDAYS as weekday}
+                    <text class="weekday" class:weekend={weekday.weekend}>
+                        <textPath href="#{id('week-path')}" startOffset={weekday.offset}>
+                            <tspan dy="18">{weekday.letter}</tspan>
+                        </textPath>
+                    </text>
+                {/each}
+                <circle class="week-number-badge" cx="-225" cy="30" r="13" >
+                    <title>Week {calendar.weekNumber} of the year</title>
+                </circle>
+                <text class="week-number" x="-225" y="35" text-anchor="middle">{calendar.weekNumber}</text>
+                <g filter={url("dropshadow")}>
+                    <circle class="week-pointer" cx="-225" r="10" />
+                    <path class="week-pointer" d={calendar.weekArrowPath} />
+                </g>
             </g>
         </g>
 
@@ -1175,10 +1180,19 @@
         box-sizing: border-box;
         width: min(80vmin, 100cqw, 100cqh);
         aspect-ratio: 1;
+        border: 1px solid rgba(var(--clock-light-muted), 0.24);
         border-radius: 50%;
-        background-color: rgba(var(--clock-muted), 0.2);
-        box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(4px);
+        background:
+            radial-gradient(
+                circle at 50% 32%,
+                rgba(var(--clock-light-muted), 0.18),
+                rgba(var(--clock-muted), 0.12) 48%,
+                rgba(var(--clock-dark-muted), 0.2)
+            );
+        box-shadow:
+            0 1rem 2.5rem rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(var(--clock-light-muted), 0.12);
+        backdrop-filter: blur(12px);
         font-family: "Segoe UI", Tahoma, sans-serif;
     }
 
@@ -1189,99 +1203,103 @@
     }
 
     .dial {
-        stroke: rgb(var(--clock-muted));
+        stroke: rgba(var(--clock-light-muted), 0.46);
+        stroke-width: 4px;
     }
 
     .gauge {
-        fill: rgba(255, 255, 255, 0.1);
+        fill: rgba(var(--clock-light-muted), 0.055);
     }
 
     .track {
         fill: none;
-        stroke: rgba(0, 0, 0, 0.1);
-        stroke-width: 1px;
+        stroke: rgba(var(--clock-light-muted), 0.25);
+        stroke-width: 2px;
     }
 
     .sun-background {
-        fill: rgba(var(--clock-vibrant), 0.2);
+        fill: rgba(var(--clock-vibrant), 0.13);
     }
 
     .moon-shadow {
-        fill: rgba(0, 0, 0, 0.2);
+        fill: rgba(var(--clock-dark-muted), 0.28);
     }
 
     .numerals {
-        fill: rgba(var(--clock-light-muted), 0.8);
+        fill: rgba(var(--clock-light-muted), 0.72);
     }
 
     .year-progress {
         fill: none;
-        stroke: rgba(var(--clock-dark-vibrant), 0.8);
-        stroke-width: 45;
+        stroke: rgba(var(--clock-vibrant), 0.82);
+        stroke-width: 32;
     }
 
     .year-base {
         fill: none;
-        stroke: rgba(var(--clock-dark-vibrant), 0.4);
-        stroke-width: 45;
+        stroke: rgba(var(--clock-light-muted), 0.2);
+        stroke-width: 32;
     }
 
     .month-name {
-        fill: rgba(var(--clock-light-vibrant), 0.8);
-        font-family: Consolas, Menlo, "DejaVu Sans Mono", "Liberation Mono", monospace;
-        font-size: 39px;
+        fill: rgba(var(--clock-light-muted), 0.82);
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        font-size: 33px;
         font-variant: small-caps;
+        font-weight: 500;
+        letter-spacing: 0.4px;
     }
 
     .temperature-quadrant {
-        fill: rgba(var(--clock-dark-vibrant), 0.4);
+        fill: rgba(var(--clock-dark-vibrant), 0.25);
     }
 
     .temperature-tick {
-        stroke: rgba(0, 0, 0, 0.1);
-        stroke-width: 1px;
+        stroke: rgba(var(--clock-light-muted), 0.22);
+        stroke-width: 1.25px;
     }
 
     .temperature-range {
-        fill: rgba(var(--clock-light-vibrant), 0.4);
+        fill: rgba(var(--clock-light-vibrant), 0.28);
     }
 
     .temperature-needle {
-        stroke: rgb(var(--clock-dark-vibrant));
-        stroke-width: 2px;
+        stroke: rgb(var(--clock-vibrant));
+        stroke-width: 3px;
     }
 
     .temperature-label {
-        fill: rgba(var(--clock-dark-muted), 0.8);
-        font-size: 18px;
+        fill: rgb(var(--clock-light-muted));
+        font-size: 16px;
+        font-weight: 600;
     }
 
     .temperature-min-label {
-        fill: rgba(var(--clock-light-vibrant), 0.9);
-        font-size: 18px;
+        fill: rgba(var(--clock-light-muted), 0.72);
+        font-size: 14px;
     }
 
     .temperature-max-label {
-        fill: rgba(var(--clock-light-vibrant), 0.9);
-        font-size: 18px;
+        fill: rgba(var(--clock-light-muted), 0.72);
+        font-size: 14px;
     }
 
     .humidity-region {
-        fill: rgba(var(--clock-light-muted), 0.6);
+        fill: rgba(var(--clock-light-muted), 0.24);
     }
 
     .pressure-region {
-        fill: rgba(var(--clock-dark-muted), 0.6);
+        fill: rgba(var(--clock-dark-muted), 0.28);
     }
 
     .tick-major {
-        stroke: rgba(0, 0, 0, 0.2);
-        stroke-width: 2px;
+        stroke: rgba(var(--clock-light-muted), 0.35);
+        stroke-width: 1.5px;
     }
 
     .tick-minor {
-        stroke: rgba(0, 0, 0, 0.1);
-        stroke-width: 2px;
+        stroke: rgba(var(--clock-light-muted), 0.2);
+        stroke-width: 1.25px;
     }
 
     .gauge-pointer {
@@ -1290,64 +1308,66 @@
     }
 
     .humidity-label {
-        fill: rgb(var(--clock-dark-vibrant));
-        font-size: 18px;
+        fill: rgba(var(--clock-light-muted), 0.9);
+        font-size: 16px;
+        font-weight: 600;
     }
 
     .pressure-label {
-        fill: rgb(var(--clock-light-vibrant));
-        font-size: 18px;
+        fill: rgba(var(--clock-light-muted), 0.9);
+        font-size: 16px;
+        font-weight: 600;
     }
 
     .wind-label {
-        fill: rgb(var(--clock-light-vibrant));
-        font-size: 11px;
+        fill: rgba(var(--clock-light-muted), 0.76);
+        font-size: 12px;
     }
 
     .luna-shadow {
-        fill: rgba(0, 0, 0, 0.3);
+        fill: rgba(var(--clock-dark-muted), 0.38);
     }
 
     .inner-dial {
-        fill: rgba(var(--clock-light-vibrant), 0.2);
+        fill: rgba(var(--clock-light-vibrant), 0.13);
     }
 
     .radar {
         fill: none;
-        stroke: rgba(0, 0, 0, 0.2);
-        stroke-width: 1px;
+        stroke: rgba(var(--clock-light-muted), 0.18);
+        stroke-width: 1.25px;
     }
 
     .compass-label {
-        fill: rgb(var(--clock-vibrant));
+        fill: rgba(var(--clock-light-muted), 0.92);
         font-family: Arial, Helvetica, sans-serif;
-        font-size: 36px;
-        font-weight: bold;
+        font-size: 30px;
+        font-weight: 600;
     }
 
     .wind-arrow {
-        stroke: rgb(var(--clock-dark-vibrant));
-        stroke-width: 4;
+        stroke: rgb(var(--clock-vibrant));
+        stroke-width: 3.5;
     }
 
     .wind-marker {
-        fill: rgb(var(--clock-dark-vibrant));
+        fill: rgb(var(--clock-vibrant));
     }
 
     .mini-clock-face {
-        fill: rgba(var(--clock-dark-muted), 0.9);
+        fill: rgba(var(--clock-dark-muted), 0.78);
         stroke: none;
     }
 
     .mini-clock-ring {
         fill: none;
-        stroke: rgb(var(--clock-muted));
-        stroke-width: 3px;
+        stroke: rgba(var(--clock-light-muted), 0.58);
+        stroke-width: 2px;
     }
 
     .mini-clock-hand {
-        stroke: rgb(var(--clock-vibrant));
-        stroke-width: 3px;
+        stroke: rgb(var(--clock-light-muted));
+        stroke-width: 2.5px;
     }
 
     .mini-clock-dot {
@@ -1356,43 +1376,44 @@
     }
 
     .month-progress {
-        fill: rgba(var(--clock-dark-vibrant), 0.8);
+        fill: rgba(var(--clock-vibrant), 0.76);
         stroke: none;
     }
 
     .month-day {
-        fill: rgba(var(--clock-vibrant), 0.8);
-        font-size: 36px;
+        fill: rgba(var(--clock-light-muted), 0.94);
+        font-size: 34px;
+        font-weight: 600;
     }
 
     .day-of-year {
-        fill: rgba(var(--clock-vibrant), 0.8);
-        font-size: 18px;
-        letter-spacing: 5px;
+        fill: rgba(var(--clock-light-muted), 0.78);
+        font-size: 16px;
+        letter-spacing: 3px;
     }
 
     .weekday {
-        fill: rgba(var(--clock-dark-muted), 0.5);
-        font-size: 14.4px;
+        fill: rgba(var(--clock-light-muted), 0.62);
+        font-size: 14px;
         font-weight: bold;
     }
 
     .weekday.weekend {
-        fill: rgba(var(--clock-dark-vibrant), 0.5);
+        fill: rgba(var(--clock-vibrant), 0.8);
     }
 
     .week-number-badge {
-        fill: rgba(var(--clock-dark-vibrant), 0.5);
+        fill: rgba(var(--clock-dark-muted), 0.48);
     }
 
     .week-number {
-        fill: rgba(var(--clock-light-muted), 0.8);
+        fill: rgba(var(--clock-light-muted), 0.92);
         font-size: 14.4px;
         font-weight: bold;
     }
 
     .week-pointer {
-        fill: rgb(var(--clock-vibrant));
+        fill: rgb(var(--clock-light-vibrant));
         stroke: none;
     }
 
@@ -1425,21 +1446,24 @@
     }
 
     .icon-sun {
-        fill: rgb(235, 110, 76);
+        fill: rgb(var(--clock-light-vibrant));
     }
 
-    .icon-night,
+    .icon-night {
+        fill: rgb(var(--clock-dark-vibrant));
+    }
+
     .icon-cloud-dark {
-        fill: rgb(72, 73, 75);
+        fill: rgb(var(--clock-dark-muted));
     }
 
     .icon-cloud {
-        fill: rgb(242, 242, 241);
+        fill: rgb(var(--clock-light-muted));
     }
 
     .icon-line {
         fill: none;
-        stroke: rgb(72, 73, 75);
+        stroke: rgb(var(--clock-dark-muted));
         stroke-width: 2.6px;
         stroke-linecap: round;
         stroke-linejoin: round;
