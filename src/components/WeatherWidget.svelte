@@ -7,20 +7,16 @@
     import { isLocalPreview } from "../utils/environment";
     import {
         currentWeather,
+        readCachedWeather,
+        WEATHER_CACHE_DURATION_MS,
         WEATHER_CACHE_KEY,
         weatherLocation,
+        type WeatherCache,
     } from "../stores/weather";
 
     export let hasSportsWidgets = false;
 
-    interface WeatherCache {
-        latitude: number;
-        longitude: number;
-        fetchedAt: number;
-        weather: CurrentWeather;
-    }
-
-    const CACHE_DURATION_MS = 15 * 60 * 1000;
+    const CACHE_DURATION_MS = WEATHER_CACHE_DURATION_MS;
     const REFRESH_CHECK_INTERVAL_MS = 60 * 1000;
     const RETRY_DELAY_MS = 5 * 60 * 1000;
     const isPreviewMode = isLocalPreview();
@@ -35,37 +31,6 @@
         minimumTemperature: 12,
         maximumTemperature: 20,
     };
-    const isOptionalNumber = (value: unknown): boolean =>
-        value === null || (typeof value === "number" && Number.isFinite(value));
-    const isCurrentWeather = (value: unknown): value is CurrentWeather => {
-        if (typeof value !== "object" || value === null) {
-            return false;
-        }
-
-        const candidate = value as {
-            temperature?: unknown;
-            apparentTemperature?: unknown;
-            weatherCode?: unknown;
-            windSpeed?: unknown;
-            windDirection?: unknown;
-            humidity?: unknown;
-            pressure?: unknown;
-            minimumTemperature?: unknown;
-            maximumTemperature?: unknown;
-        };
-        return (
-            typeof candidate.temperature === "number" &&
-            typeof candidate.apparentTemperature === "number" &&
-            typeof candidate.weatherCode === "number" &&
-            typeof candidate.windSpeed === "number" &&
-            isOptionalNumber(candidate.windDirection) &&
-            isOptionalNumber(candidate.humidity) &&
-            isOptionalNumber(candidate.pressure) &&
-            isOptionalNumber(candidate.minimumTemperature) &&
-            isOptionalNumber(candidate.maximumTemperature)
-        );
-    };
-
     let current: CurrentWeather | null = null;
     let currentFetchedAt = 0;
     let lastAttemptAt = 0;
@@ -105,32 +70,7 @@
     }
 
     function readCache(location: WeatherLocation): WeatherCache | null {
-        const storedCache = window.localStorage.getItem(WEATHER_CACHE_KEY);
-        if (!storedCache) {
-            return null;
-        }
-
-        try {
-            const cache: unknown = JSON.parse(storedCache);
-            if (
-                typeof cache !== "object" ||
-                cache === null ||
-                typeof (cache as WeatherCache).latitude !== "number" ||
-                typeof (cache as WeatherCache).longitude !== "number" ||
-                typeof (cache as WeatherCache).fetchedAt !== "number" ||
-                !isCurrentWeather((cache as WeatherCache).weather) ||
-                (cache as WeatherCache).latitude !== location.latitude ||
-                (cache as WeatherCache).longitude !== location.longitude ||
-                Date.now() - (cache as WeatherCache).fetchedAt >= CACHE_DURATION_MS
-            ) {
-                return null;
-            }
-            return cache as WeatherCache;
-        } catch (cause) {
-            console.error("The cached weather could not be loaded.", cause);
-            window.localStorage.removeItem(WEATHER_CACHE_KEY);
-            return null;
-        }
+        return readCachedWeather(location);
     }
 
     async function loadWeather(

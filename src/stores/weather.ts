@@ -1,9 +1,48 @@
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 import type { CurrentWeather, WeatherLocation } from "../models/weather";
 
 const LOCATION_KEY = "weather-location";
 export const WEATHER_CACHE_KEY = "weather-cache";
-export const currentWeather = writable<CurrentWeather | null>(null);
+export const WEATHER_CACHE_DURATION_MS = 15 * 60 * 1000;
+
+export interface WeatherCache {
+    latitude: number;
+    longitude: number;
+    fetchedAt: number;
+    weather: CurrentWeather;
+}
+
+const isOptionalNumber = (value: unknown): boolean =>
+    value === null || (typeof value === "number" && Number.isFinite(value));
+
+const isCurrentWeather = (value: unknown): value is CurrentWeather => {
+    if (typeof value !== "object" || value === null) {
+        return false;
+    }
+
+    const candidate = value as {
+        temperature?: unknown;
+        apparentTemperature?: unknown;
+        weatherCode?: unknown;
+        windSpeed?: unknown;
+        windDirection?: unknown;
+        humidity?: unknown;
+        pressure?: unknown;
+        minimumTemperature?: unknown;
+        maximumTemperature?: unknown;
+    };
+    return (
+        typeof candidate.temperature === "number" &&
+        typeof candidate.apparentTemperature === "number" &&
+        typeof candidate.weatherCode === "number" &&
+        typeof candidate.windSpeed === "number" &&
+        isOptionalNumber(candidate.windDirection) &&
+        isOptionalNumber(candidate.humidity) &&
+        isOptionalNumber(candidate.pressure) &&
+        isOptionalNumber(candidate.minimumTemperature) &&
+        isOptionalNumber(candidate.maximumTemperature)
+    );
+};
 
 const isWeatherLocation = (value: unknown): value is WeatherLocation => {
     if (typeof value !== "object" || value === null) {
@@ -62,10 +101,51 @@ const readLocation = (): WeatherLocation | null => {
     }
 };
 
-const { subscribe, set } = writable<WeatherLocation | null>(readLocation());
+const weatherLocationStore = writable<WeatherLocation | null>(readLocation());
+
+export const readCachedWeather = (
+    location: WeatherLocation | null
+): WeatherCache | null => {
+    if (!location) {
+        return null;
+    }
+
+    const storedCache = window.localStorage.getItem(WEATHER_CACHE_KEY);
+    if (!storedCache) {
+        return null;
+    }
+
+    try {
+        const parsed: unknown = JSON.parse(storedCache);
+        if (
+            typeof parsed !== "object" ||
+            parsed === null ||
+            typeof (parsed as WeatherCache).latitude !== "number" ||
+            typeof (parsed as WeatherCache).longitude !== "number" ||
+            typeof (parsed as WeatherCache).fetchedAt !== "number" ||
+            !isCurrentWeather((parsed as WeatherCache).weather) ||
+            (parsed as WeatherCache).latitude !== location.latitude ||
+            (parsed as WeatherCache).longitude !== location.longitude ||
+            Date.now() - (parsed as WeatherCache).fetchedAt >=
+                WEATHER_CACHE_DURATION_MS
+        ) {
+            return null;
+        }
+        return parsed as WeatherCache;
+    } catch (cause) {
+        console.error("The cached weather could not be loaded.", cause);
+        window.localStorage.removeItem(WEATHER_CACHE_KEY);
+        return null;
+    }
+};
+
+const cachedWeather = readCachedWeather(get(weatherLocationStore));
+export const currentWeather = writable<CurrentWeather | null>(
+    cachedWeather?.weather ?? null
+);
 
 export const weatherLocation = {
-    subscribe,
+    subscribe: weatherLocationStore.subscribe,
     save: (location: WeatherLocation): void => {
         if (!isWeatherLocation(location)) {
             throw new Error("Enter a valid weather location.");
@@ -73,11 +153,11 @@ export const weatherLocation = {
 
         window.localStorage.setItem(LOCATION_KEY, JSON.stringify(location));
         window.localStorage.removeItem(WEATHER_CACHE_KEY);
-        set(location);
+        weatherLocationStore.set(location);
     },
     clear: (): void => {
         window.localStorage.removeItem(LOCATION_KEY);
         window.localStorage.removeItem(WEATHER_CACHE_KEY);
-        set(null);
+        weatherLocationStore.set(null);
     },
 };

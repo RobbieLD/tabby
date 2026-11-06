@@ -41,6 +41,7 @@
         "";
     let unsplashSearchTerms = background.getSearchTerms();
     let unsplashColor = background.getColor();
+    let weatherAwareBackgroundSearch = background.getWeatherAwareSearch();
     let organization = $azureDevOpsSettings.organization;
     let personalAccessToken = $azureDevOpsSettings.pat;
     let azureDevOpsTeamName = $azureDevOpsSettings.teamName;
@@ -588,6 +589,9 @@
                 }
                 unsplashSearchTerms = background.saveSearchTerms(unsplashSearchTerms);
                 unsplashColor = background.saveColor(unsplashColor);
+                weatherAwareBackgroundSearch = background.saveWeatherAwareSearch(
+                    weatherAwareBackgroundSearch
+                );
                 await background.configure(key);
                 backgroundMessage =
                     "Background key and search settings saved.";
@@ -596,6 +600,9 @@
 
             unsplashSearchTerms = background.saveSearchTerms(unsplashSearchTerms);
             unsplashColor = background.saveColor(unsplashColor);
+            weatherAwareBackgroundSearch = background.saveWeatherAwareSearch(
+                weatherAwareBackgroundSearch
+            );
             await background.configure("");
             try {
                 await removeUnsplashAccess();
@@ -628,6 +635,9 @@
         try {
             unsplashSearchTerms = background.saveSearchTerms(unsplashSearchTerms);
             unsplashColor = background.saveColor(unsplashColor);
+            weatherAwareBackgroundSearch = background.saveWeatherAwareSearch(
+                weatherAwareBackgroundSearch
+            );
             backgroundMessage =
                 "Search settings saved. Refresh the photo to apply them.";
         } catch (error) {
@@ -655,6 +665,9 @@
             }
             unsplashSearchTerms = background.saveSearchTerms(unsplashSearchTerms);
             unsplashColor = background.saveColor(unsplashColor);
+            weatherAwareBackgroundSearch = background.saveWeatherAwareSearch(
+                weatherAwareBackgroundSearch
+            );
             await background.refresh();
             backgroundMessage = "Background refreshed.";
             backgroundRefreshStatus = backgroundMessage;
@@ -929,9 +942,22 @@
                     {/each}
                 </select>
             </label>
+            <label class="checkbox-field">
+                <input
+                    type="checkbox"
+                    bind:checked={weatherAwareBackgroundSearch}
+                />
+                Use current weather in background searches
+            </label>
             <p class="field-hint">
                 Enter a word or phrase, such as "nature" or "city at night". Leave blank
                 to use "nature". Search terms and the color filter are sent to Unsplash.
+            </p>
+            <p class="field-hint">
+                When enabled, current conditions add concise search keywords such as
+                "sunny", "rainy", "snowy", or "cloudy" when the next photo is fetched.
+                This requires a saved weather location; without current weather, your
+                search terms are used unchanged.
             </p>
             <div class="button-row">
                 <button class="button button-primary" type="button" on:click={saveBackgroundKey}>

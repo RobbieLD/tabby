@@ -7,9 +7,11 @@ import {
     getBackgroundTextPalette,
     type BackgroundTextPalette,
 } from "../services/image-text-palette.service";
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 import type UnsplashResponse from "../models/unsplash-response";
 import { hasAuthenticationInfoAccess } from "../services/extension-permissions";
+import { getWeatherSearchKeywords } from "../services/weather.service";
+import { currentWeather } from "./weather";
 
 const CACHE_DURATION_MS = 60 * 60 * 1000;
 const FETCHED_AT_STORAGE_KEY = "backgroundFetchedAt";
@@ -55,6 +57,7 @@ const NO_BACKGROUND: UnsplashResponse = {
 
 const SEARCH_TERMS_STORAGE_KEY = "unsplashSearchTerms";
 const COLOR_STORAGE_KEY = "unsplashColor";
+const WEATHER_AWARE_SEARCH_STORAGE_KEY = "unsplashWeatherAwareSearch";
 const DEFAULT_SEARCH_TERMS = "nature";
 const normalizeSearchTerms = (value: string): string =>
     value.trim() || DEFAULT_SEARCH_TERMS;
@@ -74,6 +77,47 @@ const createBackground = () => {
         normalizeSearchTerms(
             window.localStorage.getItem(SEARCH_TERMS_STORAGE_KEY) || ""
         );
+    const getWeatherAwareSearch = (): boolean => {
+        const storedValue = window.localStorage.getItem(
+            WEATHER_AWARE_SEARCH_STORAGE_KEY
+        );
+        if (storedValue === null || storedValue === "false") {
+            return false;
+        }
+        if (storedValue === "true") {
+            return true;
+        }
+
+        console.error("The saved weather-aware background setting is invalid.");
+        window.localStorage.removeItem(WEATHER_AWARE_SEARCH_STORAGE_KEY);
+        return false;
+    };
+    const getRequestSearchTerms = (): string => {
+        const searchTerms = getSearchTerms();
+        if (!getWeatherAwareSearch()) {
+            return searchTerms;
+        }
+
+        const weather = get(currentWeather);
+        if (!weather) {
+            return searchTerms;
+        }
+
+        const existingTerms = new Set(
+            searchTerms
+                .toLocaleLowerCase()
+                .split(/\s+/)
+                .filter((term) => term.length > 0)
+        );
+        const weatherKeywords = getWeatherSearchKeywords(weather.weatherCode).filter(
+            (keyword) =>
+                !keyword
+                    .toLocaleLowerCase()
+                    .split(/\s+/)
+                    .every((term) => existingTerms.has(term))
+        );
+        return [...new Set([searchTerms, ...weatherKeywords])].join(" ");
+    };
     const getColor = (): UnsplashColor => {
         const color = window.localStorage.getItem(COLOR_STORAGE_KEY);
         return color !== null && isUnsplashColor(color)
@@ -118,7 +162,11 @@ const createBackground = () => {
     const load = async (key: string): Promise<UnsplashResponse> => {
         const currentRequest = ++loadRequestNumber;
         try {
-            const service = new UnsplashService(key, getSearchTerms(), getColor());
+            const service = new UnsplashService(
+                key,
+                getRequestSearchTerms(),
+                getColor()
+            );
             const response = await service.get();
             // Ignore responses that finish after the key was removed or a newer request started.
             if (currentRequest !== loadRequestNumber) {
@@ -144,10 +192,22 @@ const createBackground = () => {
         subscribe,
         getSearchTerms,
         getColor,
+        getWeatherAwareSearch,
         saveSearchTerms: (value: string): string => {
             const searchTerms = normalizeSearchTerms(value);
             window.localStorage.setItem(SEARCH_TERMS_STORAGE_KEY, searchTerms);
             return searchTerms;
+        },
+        saveWeatherAwareSearch: (enabled: boolean): boolean => {
+            if (typeof enabled !== "boolean") {
+                throw new Error("Choose whether background searches use the weather.");
+            }
+
+            window.localStorage.setItem(
+                WEATHER_AWARE_SEARCH_STORAGE_KEY,
+                String(enabled)
+            );
+            return enabled;
         },
         saveColor: (value: string): UnsplashColor => {
             const color = isUnsplashColor(value)

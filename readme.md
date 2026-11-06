@@ -6,7 +6,7 @@ Tabby is a customizable new-tab page for Firefox and Chrome, built because I cou
 ## Features 
 - Stores uploaded shortcut icons locally in browser storage.
 - Finds site favicons automatically when adding a shortcut; white favicon backdrops blend into the page and a local image can be uploaded instead.
-- Uses configurable Unsplash search terms and color filters for optional landscape photo backgrounds, with photographer attribution.
+- Uses configurable Unsplash search terms and color filters for optional landscape photo backgrounds, with photographer attribution and an optional weather-aware search mode.
 - Uses a dark default background and a first-run welcome panel with a shortcut to Settings.
 - Shows current weather in the top-right corner when a location is configured.
 - Shows an optional large SVG clock, ported from [StartPage](https://github.com/RobbieLD/StartPage), in the workspace: Roman-numeral hours with a month ring and day-of-month/day-of-year dial, sunrise, sunset, moonrise, and moonset mini clocks, sun and moon positions with the moon phase, and wind, temperature (with today's range), humidity, pressure, and current-conditions gauges. Its colours follow the background photo's palette.
@@ -40,6 +40,8 @@ Pushing a numeric `X.Y.Z` tag submits the Firefox release build and its reproduc
 
 ## Usage
 To use Unsplash backgrounds, add an API access key from the [Unsplash Dev Portal](https://unsplash.com/developers) in Settings. Backgrounds are optional; saving the key requests access to Unsplash. Configure the search terms and color filter in **Settings → Background** (defaults are `nature` and `black`; choose **Any color** to omit the color filter). These settings are sent to Unsplash when requesting a landscape photo; photographer attribution is displayed.
+
+Optionally enable **Use current weather in background searches** to append concise weather-related keywords (such as sunny, rainy, snowy, or cloudy) to your saved Unsplash search when the next photo is fetched. This uses the current weather for your saved location; without available current weather the saved search is used unchanged.
 
 To show the Azure DevOps panels, enter your organization name (the part after `dev.azure.com/`) and a personal access token in Settings. Create a PAT with the **Work Items (Read)** scope and an expiry that suits you. Optionally enter a team name for the current-sprint lookup; it is reused in every project represented by your assigned items, so the same team name must exist in each project. Leave it blank to use each project's default team. The browser asks for Azure DevOps access only when you save a complete, enabled panel configuration. The PAT is stored in the extension's local browser storage and is sent only to Azure DevOps. The panels show up to 100 of your most recently changed assigned and followed work items; use the **Hide completed and done** checkbox on the assigned panel to include or exclude those states in both panels. The assigned panel shows each current iteration's name and start/end dates below its heading. It asks Azure DevOps for the `current` iteration timeframe for each relevant project, which ADO determines from the selected team's configured iteration dates. Remove the PAT from Settings at any time to hide both panels, delete the saved token, and revoke access.
 

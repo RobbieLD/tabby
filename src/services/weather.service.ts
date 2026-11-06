@@ -189,3 +189,31 @@ const WEATHER_DESCRIPTIONS: Record<number, string> = {
 
 export const describeWeather = (weatherCode: number): string =>
     WEATHER_DESCRIPTIONS[weatherCode] || "Current conditions";
+
+export const getWeatherSearchKeywords = (weatherCode: number): string[] => {
+    if (weatherCode === 0 || weatherCode === 1) {
+        return ["sunny"];
+    }
+    if (weatherCode === 2) {
+        return ["partly cloudy"];
+    }
+    if (weatherCode === 3) {
+        return ["cloudy"];
+    }
+    if (weatherCode === 45 || weatherCode === 48) {
+        return ["foggy"];
+    }
+    if (
+        (weatherCode >= 51 && weatherCode <= 67) ||
+        (weatherCode >= 80 && weatherCode <= 82)
+    ) {
+        return ["rainy"];
+    }
+    if ((weatherCode >= 71 && weatherCode <= 77) || weatherCode === 85 || weatherCode === 86) {
+        return ["snowy"];
+    }
+    if (weatherCode >= 95 && weatherCode <= 99) {
+        return ["stormy"];
+    }
+    return [];
+};
